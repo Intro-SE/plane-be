@@ -1,1 +1,0 @@
-# API endpoints for staff booking management 

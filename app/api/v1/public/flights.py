@@ -1,1 +1,0 @@
-# Public API endpoints for flight search 
