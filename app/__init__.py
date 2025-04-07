@@ -1,1 +1,1 @@
-# Application initialization 
+# Application package 
