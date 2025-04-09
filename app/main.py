@@ -1,4 +1,3 @@
- # man.py
 from fastapi import FastAPI, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.deps import get_db
