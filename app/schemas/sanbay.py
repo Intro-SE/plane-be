@@ -4,23 +4,23 @@ from .tuyenbay import TuyenBayInDB
 from .chitietchuyenbay import ChiTietChuyenBayInDB
 
 class SanBayBase(BaseModel):
-    MASANBAY: str
-    TENSANBAY: str = Field(..., min_length=1, max_length=50)
-    DIACHISANBAY: str = Field(..., min_length=1, max_length=50)
+    masanbay: str
+    tensanbay: str = Field(..., min_length=1, max_length=50)
+    diachisanbay: str = Field(..., min_length=1, max_length=50)
 
     class Config:
         from_attributes = True
 
 class SanBayCreate(BaseModel):
-    TENSANBAY: str = Field(..., min_length=1, max_length=50)
-    DIACHISANBAY: str = Field(..., min_length=1, max_length=50)
+    tensanbay: str = Field(..., min_length=1, max_length=50)
+    diachisanbay: str = Field(..., min_length=1, max_length=50)
 
     class Config:
         from_attributes = True
 
 class SanBayUpdate(BaseModel):
-    TENSANBAY: str | None = Field(None, min_length=1, max_length=50)
-    DIACHISANBAY: str | None = Field(None, min_length=1, max_length=50)
+    tensanbay: str | None = Field(None, min_length=1, max_length=50)
+    diachisanbay: str | None = Field(None, min_length=1, max_length=50)
 
     class Config:
         from_attributes = True

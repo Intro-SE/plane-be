@@ -1,50 +1,52 @@
 from pydantic import BaseModel, Field
-from typing import Optional
-from .chuyenbay import ChuyenBayInDB
-from .hangve import HangVeInDB
+from typing import Optional, TYPE_CHECKING
 
 class ThongKeHangVeChuyenBayBase(BaseModel):
-    MATHONGKEHANGVECB: str
-    MACHUYENBAY: str
-    MAHANGVE: str
-    SOLUONGGHE: int = Field(..., gt=0)
-    SOGHETRONG: int = Field(..., ge=0)
-    SOGHEDAT: int = Field(..., ge=0)
+    mathongkehangvecb: str
+    machuyenbay: str
+    mahangve: str
+    soluongghe: int = Field(..., gt=0)
+    soghetrong: int = Field(..., ge=0)
+    soghedat: int = Field(..., ge=0)
 
     class Config:
         from_attributes = True
 
 class ThongKeHangVeChuyenBayCreate(BaseModel):
-    MACHUYENBAY: str
-    MAHANGVE: str
-    SOLUONGGHE: int = Field(..., gt=0)
-    SOGHETRONG: int = Field(..., ge=0)
-    SOGHEDAT: int = Field(..., ge=0)
+    machuyenbay: str
+    mahangve: str
+    soluongghe: int = Field(..., gt=0)
+    soghetrong: int = Field(..., ge=0)
+    soghedat: int = Field(..., ge=0)
 
     class Config:
         from_attributes = True
 
 class ThongKeHangVeChuyenBayUpdate(BaseModel):
-    SOLUONGGHE: int | None = Field(None, gt=0)
-    SOGHETRONG: int | None = Field(None, ge=0)
-    SOGHEDAT: int | None = Field(None, ge=0)
+    soluongghe: int | None = Field(None, gt=0)
+    soghetrong: int | None = Field(None, ge=0)
+    soghedat: int | None = Field(None, ge=0)
 
     class Config:
         from_attributes = True
 
 class ThongKeHangVeChuyenBayInDB(ThongKeHangVeChuyenBayBase):
-    chuyenbay: ChuyenBayInDB
-    hangve: HangVeInDB
+    chuyenbay: "ChuyenBayInDB"
+    hangve: "HangVeInDB"
 
     @property
     def ti_le_dat(self) -> float:
-        if self.SOLUONGGHE == 0:
+        if self.soluongghe == 0:
             return 0
-        return (self.SOGHEDAT / self.SOLUONGGHE) * 100
+        return (self.soghedat / self.soluongghe) * 100
 
     @property
     def ti_le_dat_format(self) -> str:
         return f"{self.ti_le_dat:.1f}%"
 
     class Config:
-        from_attributes = True 
+        from_attributes = True
+
+if TYPE_CHECKING:
+    from .chuyenbay import ChuyenBayInDB
+    from .hangve import HangVeInDB 

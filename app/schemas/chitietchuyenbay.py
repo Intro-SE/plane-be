@@ -1,42 +1,43 @@
 from pydantic import BaseModel, Field
-from typing import Optional
-from .tuyenbay import TuyenBayInDB
-from .sanbay import SanBayInDB
+from typing import Optional, TYPE_CHECKING
 
 class ChiTietChuyenBayBase(BaseModel):
-    MACHITIETCHUYENBAY: str
-    MATUYENBAY: str
-    MASANBAYTRUNGGIAN: str
-    THOIGIANDUNG: int = Field(..., gt=0)
-    GHICHU: str | None = None
+    machitietchuyenbay: str
+    matuyenbay: str
+    masanbaytrunggian: str
+    thoigiandung: int = Field(..., gt=0)
+    ghichu: str | None = None
 
     class Config:
         from_attributes = True
 
 class ChiTietChuyenBayCreate(BaseModel):
-    MATUYENBAY: str
-    MASANBAYTRUNGGIAN: str
-    THOIGIANDUNG: int = Field(..., gt=0)
-    GHICHU: str | None = None
+    matuyenbay: str
+    masanbaytrunggian: str
+    thoigiandung: int = Field(..., gt=0)
+    ghichu: str | None = None
 
     class Config:
         from_attributes = True
 
 class ChiTietChuyenBayUpdate(BaseModel):
-    MASANBAYTRUNGGIAN: str | None = None
-    THOIGIANDUNG: int | None = Field(None, gt=0)
-    GHICHU: str | None = None
+    thoigiandung: int | None = Field(None, gt=0)
+    ghichu: str | None = None
 
     class Config:
         from_attributes = True
 
 class ChiTietChuyenBayInDB(ChiTietChuyenBayBase):
-    tuyenbay: TuyenBayInDB
-    sanbaytrunggian: SanBayInDB
+    tuyenbay: "TuyenBayInDB"
+    sanbaytrunggian: "SanBayInDB"
 
     @property
     def thoi_gian_dung_format(self) -> str:
-        return f"{self.THOIGIANDUNG} phút"
+        return f"{self.thoigiandung} phút"
 
     class Config:
-        from_attributes = True 
+        from_attributes = True
+
+if TYPE_CHECKING:
+    from .tuyenbay import TuyenBayInDB
+    from .sanbay import SanBayInDB 

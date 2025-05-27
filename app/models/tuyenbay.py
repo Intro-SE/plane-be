@@ -3,15 +3,15 @@ from sqlalchemy.orm import relationship
 from app.models.base import Base
 
 class TuyenBay(Base):
-    __tablename__ = "TUYENBAY"
+    __tablename__ = "tuyenbay"
 
-    MATUYENBAY = Column(String(50), primary_key=True)
-    SANBAYDI = Column(String(50), ForeignKey("SANBAY.MASANBAY"), nullable=False)
-    SANBAYDEN = Column(String(50), ForeignKey("SANBAY.MASANBAY"), nullable=False)
+    matuyenbay = Column(String(50), primary_key=True)
+    sanbaydi = Column(String(50), ForeignKey("sanbay.masanbay"), nullable=False)
+    sanbayden = Column(String(50), ForeignKey("sanbay.masanbay"), nullable=False)
 
     # Relationships
-    sanbay_di = relationship("SanBay", foreign_keys=[SANBAYDI])
-    sanbay_den = relationship("SanBay", foreign_keys=[SANBAYDEN])
+    sanbay_di = relationship("SanBay", foreign_keys=[sanbaydi])
+    sanbay_den = relationship("SanBay", foreign_keys=[sanbayden])
     chuyenbays = relationship("ChuyenBay", back_populates="tuyenbay")
     chitietchuyenbays = relationship("ChiTietChuyenBay", back_populates="tuyenbay")
     dongias = relationship("DonGia", back_populates="tuyenbay") 
