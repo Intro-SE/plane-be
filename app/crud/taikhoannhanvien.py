@@ -6,7 +6,18 @@ from sqlalchemy.orm import selectinload,joinedload
 from sqlalchemy import select, func
 import re
 from sqlalchemy.future import select
+from app.core.security import get_password_hash
+from passlib.context import CryptContext
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+async def authenticate_user(db: AsyncSession, tendangnhap: str, matkhau: str):
+    user = await db.query(TaiKhoanNhanVien).filter_by(tendangnhap=tendangnhap).first()
+    if not user:
+        return None
+    if not pwd_context.verify(matkhau, user.matkhau):
+        return None
+    return user
 
 async def get_by_id(db: AsyncSession, id_nhanvien: str) -> Optional[TaiKhoanNhanVien]:
     result = await db.execute(
@@ -45,7 +56,8 @@ async def create(db: AsyncSession, obj_in: TaiKhoanNhanVienCreate) -> TaiKhoanNh
     
     db_obj = TaiKhoanNhanVien(
         idnhanvien=new_id,            
-        **obj_in.dict()
+        **obj_in.dict(exclude={"matkhau"}),
+        matkhau=get_password_hash(obj_in.matkhau)
     )
     
     db.add(db_obj)
@@ -72,3 +84,8 @@ async def remove(db: AsyncSession, id_nhanvien: str) -> Optional[TaiKhoanNhanVie
         await db.delete(obj)
         await db.commit()
     return obj
+
+
+async def get_by_username(db: AsyncSession, username: str):
+    result = await db.execute(select(TaiKhoanNhanVien).where(TaiKhoanNhanVien.tendangnhap == username))
+    return result.scalars().first()
