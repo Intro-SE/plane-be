@@ -7,10 +7,7 @@ from app.crud.taikhoannhanvien import get_all, get_by_id, create, update, remove
 from fastapi import Body
 
 
-router = APIRouter(
-    prefix="/employee",
-    tags= ["EmployeeAccount"]
-)
+router = APIRouter()
 
 
 

@@ -96,3 +96,34 @@ class PhieuDatChoVeMayBayInDB(PhieuDatChoVeMayBayBase):
         from_attributes = True
         
         
+class ThongTinHanhKhach(BaseModel):
+    gioitinh: str
+    cmnd_cccd: str
+    tenhanhkhach: str
+    sodienthoai: str
+    
+    
+    
+class VeChuyenBay(BaseModel):
+    maphieudatcho: str
+    machuyenbay: str
+    tenhangve: str
+    
+    
+    sanbay_di: str
+    masanbay_di: str
+    ngaybay: date
+    giobay: time
+    
+    
+    sanbay_den: str
+    masanbay_den: str
+    ngayden: str
+    gioden:str
+    
+    thongtinhanhkhach: ThongTinHanhKhach
+    giatien: int
+    
+    class Config:
+        from_attributes = True
+    
