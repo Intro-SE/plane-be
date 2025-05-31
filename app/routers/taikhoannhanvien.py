@@ -52,4 +52,3 @@ async def delete_employee(employee_id: str,db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code= 404, detail= "Employee not found")
     
     return await remove(db, employee_id)
-

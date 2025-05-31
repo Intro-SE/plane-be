@@ -44,4 +44,3 @@ async def delete_info(id_pdc: str,db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code= 404, detail= "Ticket not found")
     
     return await delete_ticket(db, db_obj)
-

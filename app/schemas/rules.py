@@ -1,57 +1,57 @@
 from pydantic import BaseModel, Field
 
-class RulesBase(BaseModel):
-    soluongsanbaytoida: int = Field(default=10, ge=0)
-    soluongsanbaytrunggiantoida: int = Field(default=2, ge=0)
-    thoigianbaytoithieu: int = Field(default=30, gt=0)
-    thoigiandungtoida: int = Field(default=20)
-    thoigiandungtoithieu: int = Field(default=10, gt=0)
-    thoigianchamnhatdatve: int = Field(default=1, gt=0)
-    thoigianchamnhathuydatve: int = Field(default=1, gt=0)
+class RuleBase(BaseModel):
+    max_airports: int = Field(default=10, ge=0)
+    max_transit_airports: int = Field(default=2, ge=0)
+    min_flight_time: int = Field(default=30, gt=0)
+    max_transit_time: int = Field(default=20)
+    min_transit_time: int = Field(default=10, gt=0)
+    latest_booking_time: int = Field(default=1, gt=0)
+    latest_cancel_time: int = Field(default=1, gt=0)
 
     class Config:
         from_attributes = True
 
-class RulesCreate(BaseModel):
-    soluongsanbaytoida: int = Field(default=10, ge=0)
-    soluongsanbaytrunggiantoida: int = Field(default=2, ge=0)
-    thoigianbaytoithieu: int = Field(default=30, gt=0)
-    thoigiandungtoida: int = Field(default=20)
-    thoigiandungtoithieu: int = Field(default=10, gt=0)
-    thoigianchamnhatdatve: int = Field(default=1, gt=0)
-    thoigianchamnhathuydatve: int = Field(default=1, gt=0)
+class RuleCreate(BaseModel):
+    max_airports: int = Field(default=10, ge=0)
+    max_transit_airports: int = Field(default=2, ge=0)
+    min_flight_time: int = Field(default=30, gt=0)
+    max_transit_time: int = Field(default=20)
+    min_transit_time: int = Field(default=10, gt=0)
+    latest_booking_time: int = Field(default=1, gt=0)
+    latest_cancel_time: int = Field(default=1, gt=0)
 
     class Config:
         from_attributes = True
 
-class RulesUpdate(BaseModel):
-    soluongsanbaytoida: int | None = Field(None, ge=0)
-    soluongsanbaytrunggiantoida: int | None = Field(None, ge=0)
-    thoigianbaytoithieu: int | None = Field(None, gt=0)
-    thoigiandungtoida: int | None = None
-    thoigiandungtoithieu: int | None = Field(None, gt=0)
-    thoigianchamnhatdatve: int | None = Field(None, gt=0)
-    thoigianchamnhathuydatve: int | None = Field(None, gt=0)
+class RuleUpdate(BaseModel):
+    max_airports: int | None = Field(None, ge=0)
+    max_transit_airports: int | None = Field(None, ge=0)
+    min_flight_time: int | None = Field(None, gt=0)
+    max_transit_time: int | None = None
+    min_transit_time: int | None = Field(None, gt=0)
+    latest_booking_time: int | None = Field(None, gt=0)
+    latest_cancel_time: int | None = Field(None, gt=0)
 
     class Config:
         from_attributes = True
 
-class RulesInDB(RulesBase):
+class RuleInDB(RuleBase):
     @property
-    def thoi_gian_bay_format(self) -> str:
-        return f"{self.thoigianbaytoithieu} phút"
+    def flight_time_format(self) -> str:
+        return f"{self.min_flight_time} minutes"
 
     @property
-    def thoi_gian_dung_format(self) -> str:
-        return f"{self.thoigiandungtoithieu} - {self.thoigiandungtoida} phút"
+    def transit_time_format(self) -> str:
+        return f"{self.min_transit_time} - {self.max_transit_time} minutes"
 
     @property
-    def thoi_gian_dat_ve_format(self) -> str:
-        return f"{self.thoigianchamnhatdatve} giờ trước giờ bay"
+    def booking_time_format(self) -> str:
+        return f"{self.latest_booking_time} hours before departure"
 
     @property
-    def thoi_gian_huy_ve_format(self) -> str:
-        return f"{self.thoigianchamnhathuydatve} giờ trước giờ bay"
+    def cancel_time_format(self) -> str:
+        return f"{self.latest_cancel_time} hours before departure"
 
     class Config:
-        from_attributes = True 
+        from_attributes = True
