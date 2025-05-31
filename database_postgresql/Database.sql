@@ -1,112 +1,112 @@
 -- B1: Tạo bảng + PK
 CREATE TABLE Rules
 (
-    MaxAirports INT DEFAULT 10 CHECK (MaxAirports >= 0),
-	MaxTransitAirports INT DEFAULT 2 CHECK (MaxTransitAirports >= 0),
-    MinFlightTime INT DEFAULT 30 CHECK (MinFlightTime > 0),
-	MinStopTime INT DEFAULT 10 CHECK (MinStopTime > 0),
-	MaxStopTime INT DEFAULT 20 CHECK (MaxStopTime >= MinStopTime),
-    LatestBookingTime INT DEFAULT 1 CHECK (LatestBookingTime > 0),
-	LatestCancelTime INT DEFAULT 1 CHECK (LatestCancelTime > 0),
-	TicketClassCount INT DEFAULT 2 CHECK (TicketClassCount > 0)
+    max_airports INT DEFAULT 10 CHECK (max_airports >= 0),
+	max_transit_airports INT DEFAULT 2 CHECK (max_transit_airports >= 0),
+    min_flight_time INT DEFAULT 30 CHECK (min_flight_time > 0),
+	min_stop_time INT DEFAULT 10 CHECK (min_stop_time > 0),
+	max_stop_time INT DEFAULT 20 CHECK (max_stop_time >= min_stop_time),
+    latest_booking_time INT DEFAULT 1 CHECK (latest_booking_time > 0),
+	latest_cancel_time INT DEFAULT 1 CHECK (latest_cancel_time > 0),
+	ticket_class_count INT DEFAULT 2 CHECK (ticket_class_count > 0)
 );
 
 CREATE TABLE Airport
 (
-	AirportID VARCHAR(50) NOT NULL,
-	AirportName VARCHAR(50) NOT NULL,
-	AirportAddress VARCHAR(50) NOT NULL,
-	CONSTRAINT PK_Airport PRIMARY KEY (AirportID)
+	airport_ID VARCHAR(50) NOT NULL,
+	airport_name VARCHAR(50) NOT NULL,
+	airport_address VARCHAR(50) NOT NULL,
+	CONSTRAINT PK_Airport PRIMARY KEY (airport_ID)
 );
 
 
 CREATE TABLE FlightRoute
 (
-	FlightRouteID VARCHAR(50) NOT NULL,
-	DepartureAirportID VARCHAR(50) NOT NULL,
-	ArrivalAirportID VARCHAR(50) NOT NULL,
-	CONSTRAINT PK_FlightRoute PRIMARY KEY (FlightRouteID)
+	flight_route_ID VARCHAR(50) NOT NULL,
+	departure_airport_ID VARCHAR(50) NOT NULL,
+	arrival_airport_ID VARCHAR(50) NOT NULL,
+	CONSTRAINT PK_FlightRoute PRIMARY KEY (flight_route_ID)
 );
 
 CREATE TABLE Flight
 (
-	FlightID VARCHAR(50) NOT NULL,
-	FlightRouteID VARCHAR(50) NOT NULL,
-	FlightDate DATE NOT NULL,
-	DepartureTime TIME NOT NULL,
-	FlightDuration INT NOT NULL,
-	FlightSeatCount INT NOT NULL,
-	CONSTRAINT PK_Flight PRIMARY KEY (FlightID)
+	flight_ID VARCHAR(50) NOT NULL,
+	flight_route_ID VARCHAR(50) NOT NULL,
+	flight_date DATE NOT NULL,
+	departure_time TIME NOT NULL,
+	flight_duration INT NOT NULL,
+	flight_seat_count INT NOT NULL,
+	CONSTRAINT PK_Flight PRIMARY KEY (flight_ID)
 );
 
 CREATE TABLE FlightDetail
 (
-	FligthDetailID VARCHAR(50) NOT NULL,
-	FlightRouteID VARCHAR(50) NOT NULL,
-	TransitAirportID VARCHAR(50) NOT NULL,
-	StopTime INT NOT NULL,
-	Note VARCHAR(200),
-	CONSTRAINT PK_FlightDetail PRIMARY KEY (FligthDetailID)
+	flight_detail_ID VARCHAR(50) NOT NULL,
+	flight_route_ID VARCHAR(50) NOT NULL,
+	transit_airport_ID VARCHAR(50) NOT NULL,
+	stop_time INT NOT NULL,
+	note VARCHAR(200),
+	CONSTRAINT PK_FlightDetail PRIMARY KEY (flight_detail_ID)
 );
 
 CREATE TABLE TicketClass
 (
-	TicketClassID VARCHAR(50) NOT NULL,
-	TicketClassName VARCHAR(50) NOT NULL,
-	CONSTRAINT PK_TicketClass PRIMARY KEY (TicketClassID)
+	ticket_class_ID VARCHAR(50) NOT NULL,
+	ticket_class_name VARCHAR(50) NOT NULL,
+	CONSTRAINT PK_TicketClass PRIMARY KEY (ticket_class_ID)
 );
 
 CREATE TABLE TicketClassStatistics
 (
-	TicketClassStatisticsID varchar(50) NOT NULL,
-	FlightID VARCHAR(50) NOT NULL,
-	TicketClassID VARCHAR(50) NOT NULL,
-	TotalSeats INT NOT NULL,	-- Số lượng ghế của hạng vé trong chuyến bay đó --
-	AvailableSeats INT NOT NULL,	-- Số lượng ghế trống của hạng vé đó --
-	BookedSeats INT NOT NULL,		-- Số lượng ghế đã đặt, lấy từ các vé của chuyến bay --
-	CONSTRAINT PK_TicketClassStatistics PRIMARY KEY (TicketClassStatisticsID)
+	ticket_class_statistics_ID varchar(50) NOT NULL,
+	flight_ID VARCHAR(50) NOT NULL,
+	ticket_class_ID VARCHAR(50) NOT NULL,
+	total_seats INT NOT NULL,	-- Số lượng ghế của hạng vé trong chuyến bay đó --
+	available_seats INT NOT NULL,	-- Số lượng ghế trống của hạng vé đó --
+	booked_seats INT NOT NULL,		-- Số lượng ghế đã đặt, lấy từ các vé của chuyến bay --
+	CONSTRAINT PK_TicketClassStatistics PRIMARY KEY (ticket_class_statistics_ID)
 );
 
 CREATE TABLE TicketPrice
 (
-	TicketPriceID VARCHAR(50) NOT NULL,
-	FlightRouteID VARCHAR(50) NOT NULL,
-	TicketClassID VARCHAR(50) NOT NULL,
-	Price INT NOT NULL,
-	CONSTRAINT PK_TicketPrice PRIMARY KEY (TicketPriceID)
+	ticket_price_ID VARCHAR(50) NOT NULL,
+	flight_route_ID VARCHAR(50) NOT NULL,
+	ticket_class_ID VARCHAR(50) NOT NULL,
+	price INT NOT NULL,
+	CONSTRAINT PK_TicketPrice PRIMARY KEY (ticket_price_ID)
 );
 
 CREATE TABLE Employee
 (
-	EmployeeID VARCHAR(50) NOT NULL,
-	EmployeeUsername VARCHAR(200) NOT NULL,
-	EmployeePassword VARCHAR(200) NOT NULL,
-	EmployeeName VARCHAR(50) NOT NULL,
-	NationalID VARCHAR(50) NOT NULL,
-	Gender VARCHAR(3) CHECK (Gender IN ('Nam', 'Nữ')),
-	PhoneNumber VARCHAR(50) NOT NULL,
-	CreatedDate DATE NOT NULL,
-	CONSTRAINT PK_Employee PRIMARY KEY (EmployeeID)
+	employee_ID VARCHAR(50) NOT NULL,
+	employee_username VARCHAR(200) NOT NULL,
+	employee_password VARCHAR(200) NOT NULL,
+	employee_name VARCHAR(50) NOT NULL,
+	national_ID VARCHAR(50) NOT NULL,
+	gender VARCHAR(3) CHECK (Gender IN ('Nam', 'Nữ')),
+	phone_number VARCHAR(50) NOT NULL,
+	created_date DATE NOT NULL,
+	CONSTRAINT PK_Employee PRIMARY KEY (employee_ID)
 );
 
 CREATE TABLE Booking_Ticket
 (
-	Booking_TicketID VARCHAR(50) NOT NULL,
-	FlightID VARCHAR(50) NOT NULL,
+	booking_ticket_ID VARCHAR(50) NOT NULL,
+	flight_ID VARCHAR(50) NOT NULL,
 	-- Thông tin Hành khách
-	PassengerName VARCHAR(50) NOT NULL,
-	NationalID VARCHAR(50) NOT NULL,
-	Gender VARCHAR(3) CHECK (Gender IN ('Nam', 'Nữ')),
-	PhoneNumber VARCHAR(12) NOT NULL,
+	passenger_name VARCHAR(50) NOT NULL,
+	national_ID VARCHAR(50) NOT NULL,
+	gender VARCHAR(3) CHECK (Gender IN ('Nam', 'Nữ')),
+	phone_number VARCHAR(12) NOT NULL,
 	-- Thông tin vé
-	TicketClassID VARCHAR(50) NOT NULL,
-	BookingPrice BIGINT NOT NULL,
-	BookingDate DATE NOT NULL,
+	ticket_class_ID VARCHAR(50) NOT NULL,
+	booking_price BIGINT NOT NULL,
+	booking_date DATE NOT NULL,
 	-- -- Quan trọng: True (Đã xuất vé - Là vé chuyến bay), False (Chỉ là phiếu đặt chỗ)
-	TicketStatus BOOLEAN NOT NULL,
+	ticket_status BOOLEAN NOT NULL,
 	-- Thông tin nhân viên
-	EmployeeID VARCHAR(50) NOT NULL,
-	CONSTRAINT PK_Booking_Ticket PRIMARY KEY (Booking_TicketID)
+	employee_ID VARCHAR(50) NOT NULL,
+	CONSTRAINT PK_Booking_Ticket PRIMARY KEY (booking_ticket_ID)
 ); -- Tới đây
 
 ------------------------------------------------
@@ -115,21 +115,21 @@ CREATE TABLE Booking_Ticket
 -- Bảng Flight
 ALTER TABLE Flight
     ADD CONSTRAINT FK_Flight_FlightRoute
-    FOREIGN KEY (FlightRouteID)
-    REFERENCES FlightRoute(FlightRouteID);
+    FOREIGN KEY (flight_route_ID)
+    REFERENCES FlightRoute(flight_route_ID);
 
 -- Bảng Airport
 
 -- Bảng FlightRoute
 ALTER TABLE FlightRoute
     ADD CONSTRAINT FK_FlightRoute_DepartureAirport
-    FOREIGN KEY (DepartureAirportID)
-    REFERENCES Airport(AirportID);
+    FOREIGN KEY (departure_airport_ID)
+    REFERENCES Airport(airport_ID);
 
 ALTER TABLE FlightRoute
     ADD CONSTRAINT FK_FlightRoute_ArrivalAirport
-    FOREIGN KEY (ArrivalAirportID)
-    REFERENCES Airport(AirportID);
+    FOREIGN KEY (arrival_airport_ID)
+    REFERENCES Airport(airport_ID);
 
 -- alter table PHIM
 -- 	add constraint CK_PHIM_NAMSX
@@ -138,13 +138,13 @@ ALTER TABLE FlightRoute
 -- Bảng FlightDetail
 ALTER TABLE FlightDetail
     ADD CONSTRAINT FK_FlightDetail_FlightRoute
-    FOREIGN KEY (FlightRouteID)
-    REFERENCES FlightRoute(FlightRouteID);
+    FOREIGN KEY (flight_route_ID)
+    REFERENCES FlightRoute(flight_route_ID);
 
 ALTER TABLE FlightDetail
     ADD CONSTRAINT FK_FlightDetail_TransitAirport
-    FOREIGN KEY (TransitAirportID)
-    REFERENCES Airport(AirportID);
+    FOREIGN KEY (transit_airport_ID)
+    REFERENCES Airport(airport_ID);
 
 -- ALTER TABLE PHIM
 --     ADD CONSTRAINT CK_PHIM_NAMSX
@@ -155,24 +155,24 @@ ALTER TABLE FlightDetail
 -- Bảng TicketClassStatistics 
 ALTER TABLE TicketClassStatistics
     ADD CONSTRAINT FK_TicketClassStatistics_Flight
-    FOREIGN KEY (FlightID)
-    REFERENCES Flight(FlightID);
+    FOREIGN KEY (flight_ID)
+    REFERENCES Flight(flight_ID);
 
 ALTER TABLE TicketClassStatistics
     ADD CONSTRAINT FK_TicketClassStatistics_TicketClass
-    FOREIGN KEY (TicketClassID)
-    REFERENCES TicketClass(TicketClassID);
+    FOREIGN KEY (ticket_class_ID)
+    REFERENCES TicketClass(ticket_class_ID);
 
 -- Bảng DONGIA
 ALTER TABLE TicketPrice
     ADD CONSTRAINT FK_TicketPrice_FlightRoute
-    FOREIGN KEY (FlightRouteID)
-    REFERENCES FlightRoute(FlightRouteID);
+    FOREIGN KEY (flight_route_ID)
+    REFERENCES FlightRoute(flight_route_ID);
 
 ALTER TABLE TicketPrice
     ADD CONSTRAINT FK_TicketPrice_TicketClass
-    FOREIGN KEY (TicketClassID)
-    REFERENCES TicketClass(TicketClassID);
+    FOREIGN KEY (ticket_class_ID)
+    REFERENCES TicketClass(ticket_class_ID);
 
 -- ALTER TABLE DAODIEN
 --     ADD CONSTRAINT FK_DAODIEN_PHAI
@@ -187,18 +187,18 @@ ALTER TABLE TicketPrice
 -- Bảng Booking_Ticket
 ALTER TABLE Booking_Ticket
     ADD CONSTRAINT FK_Booking_Ticket_Flight
-    FOREIGN KEY (FlightID)
-    REFERENCES Flight(FlightID);
+    FOREIGN KEY (flight_ID)
+    REFERENCES Flight(flight_ID);
 
 ALTER TABLE Booking_Ticket
     ADD CONSTRAINT FK_Booking_Ticket_TicketClass
-    FOREIGN KEY (TicketClassID)
-    REFERENCES TicketClass(TicketClassID);
+    FOREIGN KEY (ticket_class_ID)
+    REFERENCES TicketClass(ticket_class_ID);
 
 ALTER TABLE Booking_Ticket
     ADD CONSTRAINT FK_Booking_Ticket_Employee
-    FOREIGN KEY (EmployeeID)
-    REFERENCES Employee(EmployeeID);
+    FOREIGN KEY (employee_ID)
+    REFERENCES Employee(employee_ID);
 
 -- ALTER TABLE DIENVIEN
 --     ADD CONSTRAINT FK_DIENVIEN_PHAI
