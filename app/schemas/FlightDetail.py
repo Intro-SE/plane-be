@@ -3,25 +3,25 @@ from typing import Optional, TYPE_CHECKING
 
 class FlightDetailBase(BaseModel):
     flight_detail_id: str
-    route_id: str
+    flight_route_id: str
     transit_airport_id: str
-    transit_duration: int = Field(..., gt=0)
+    stop_time: int = Field(..., gt=0)
     note: Optional[str] = None
 
     class Config:
         from_attributes = True
 
 class FlightDetailCreate(BaseModel):
-    route_id: str
+    flight_route_id: str
     transit_airport_id: str
-    transit_duration: int = Field(..., gt=0)
+    stop_time: int = Field(..., gt=0)
     note: Optional[str] = None
 
     class Config:
         from_attributes = True
 
 class FlightDetailUpdate(BaseModel):
-    transit_duration: Optional[int] = Field(None, gt=0)
+    stop_time: Optional[int] = Field(None, gt=0)
     note: Optional[str] = None
 
     class Config:
@@ -32,8 +32,8 @@ class FlightDetailInDB(FlightDetailBase):
     transit_airport: "AirportInDB"
 
     @property
-    def transit_duration_format(self) -> str:
-        return f"{self.transit_duration} phút"
+    def stop_time_format(self) -> str:
+        return f"{self.stop_time} phút"
 
     class Config:
         from_attributes = True

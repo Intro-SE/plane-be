@@ -1,9 +1,9 @@
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, time
 from typing import List, Optional
 
 class FlightRouteRef(BaseModel):
-    route_id: str
+    flight_route_id: str
     departure_airport: str
     arrival_airport: str
 
@@ -36,7 +36,7 @@ class FlightBase(BaseModel):
     flight_id: str
     flight_route_id: str
     departure_date: datetime
-    departure_time: datetime
+    departure_time: time
     duration: int = Field(..., gt=0)
     total_seats: int = Field(..., gt=0)
 
@@ -47,7 +47,7 @@ class FlightBase(BaseModel):
 class FlightCreate(BaseModel):
     flight_route_id: str
     departure_date: datetime
-    departure_time: datetime
+    departure_time: time
     duration: int = Field(..., gt=0)
     total_seats: int = Field(..., gt=0)
 
@@ -57,7 +57,7 @@ class FlightCreate(BaseModel):
 
 class FlightUpdate(BaseModel):
     departure_date: Optional[datetime] = None
-    departure_time: Optional[datetime] = None
+    departure_time: Optional[time] = None
     duration: Optional[int] = Field(None, gt=0)
     total_seats: Optional[int] = Field(None, gt=0)
 

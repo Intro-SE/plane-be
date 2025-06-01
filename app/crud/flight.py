@@ -54,7 +54,7 @@ async def create_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
     
     new_flight = Flight(
         flight_id = flight_id,
-        flight_route_id= flight.route_id,
+        flight_route_id= flight.flight_route_id,
         departure_date= flight.departure_date,
         departure_time=flight.departure_time,
         duration= flight.duration,

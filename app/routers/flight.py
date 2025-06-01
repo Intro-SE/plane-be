@@ -33,7 +33,7 @@ async def get_all_flights(skip:int = 0, limit: int = 100, db: AsyncSession = Dep
             
             flight_data = FlightInDB(
                 flight_id=flight.flight_id,
-                route_id=flight.flight_route_id,
+                flight_route_id=flight.flight_route_id,
                 departure_date=flight.departure_date,
                 departure_time=flight.departure_time,
                 duration=flight.duration,
