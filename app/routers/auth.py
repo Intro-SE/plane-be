@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.deps import get_db
-from app.crud.taikhoannhanvien import get_by_username
+from app.crud.employee import get_by_username
 from app.core.security import verify_password, create_access_token
 from datetime import timedelta
 from pydantic import BaseModel
@@ -25,39 +25,39 @@ async def login(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Tên đăng nhập hoặc mật khẩu không đúng",
+            detail="Username or password incorrect",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
     try:
-        if not verify_password(form_data.password, user.matkhau):
+        if not verify_password(form_data.password, user.employee_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Tên đăng nhập hoặc mật khẩu không đúng",
+                detail="Username or password incorrect",
                 headers={"WWW-Authenticate": "Bearer"},
             )
     except UnknownHashError:
-        if form_data.password != user.matkhau:
+        if form_data.password != user.employee_password:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Tên đăng nhập hoặc mật khẩu không đúng",
+                detail="Username or password incorrect",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        user.matkhau = get_password_hash(form_data.password)
+        user.employee_password = get_password_hash(form_data.password)
         db.add(user)
         try:
             await db.commit()
             await db.refresh(user)
         except Exception as e:
-            print(f"Lỗi khi cập nhật mật khẩu hash: {e}")
+            print(f"{e}")
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.tendangnhap}, expires_delta=access_token_expires
+        data={"sub": user.employee_username}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"account_id": user.employee_id,"access_token": access_token, "token_type": "bearer"}
 
 
 @router.post("/logout")
 async def logout():
-    return {"msg": "Logout thành công"}
+    return {"msg": "Logout success"}
