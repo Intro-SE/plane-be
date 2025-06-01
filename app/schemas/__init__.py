@@ -15,7 +15,7 @@ from .Booking_Ticket import (
 from .TicketClassStatistics import TicketClassStatisticsInDB
 from .TicketClass import TicketClassInDB
 from .FlightRoute import FlightRouteInDB
-from .Airport import AirportBase, AirportInDB, AirportCreate, AirportUpdate
+from .Airport import AirportInDB, AirportCreate, AirportUpdate
 from .Flight import FlightBase, FlightCreate, FlightInDB, FlightUpdate
 from .TicketPrice import TicketPriceBase, TicketPriceCreate, TicketPriceInDB, TicketPriceUpdate
 from .FlightDetail import FlightDetailBase, FlightDetailCreate, FlightDetailInDB, FlightDetailUpdate
