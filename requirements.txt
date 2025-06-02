@@ -9,3 +9,4 @@ python-jose
 alembic
 bcrypt
 typing-extensions 
+python-multipart  
