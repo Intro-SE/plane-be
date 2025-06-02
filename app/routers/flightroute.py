@@ -21,10 +21,6 @@ async def get_all(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(ge
     except Exception as e:
         raise HTTPException(status_code= 500, detail=str(e))
     
-@router.post("/")
-    
-    
-
 
 @router.post("/", response_model=FlightRouteInDB, status_code= status.HTTP_201_CREATED)
 async def create_new_flightroute(flightroute: FlightRouteCreate, db: AsyncSession = Depends(get_db)):
