@@ -17,7 +17,9 @@ async def get_all_flights(skip:int = 0, limit: int = 100, db: AsyncSession = Dep
             flight_route = FlightRouteRef(
                 flight_route_id=flight.flight_route.flight_route_id,
                 departure_airport=flight.flight_route.departure_airport.airport_name,
-                arrival_airport=flight.flight_route.arrival_airport.airport_name
+                departure_address=flight.flight_route.departure_airport.airport_address,
+                arrival_airport=flight.flight_route.arrival_airport.airport_name,
+                arrival_address=flight.flight_route.arrival_airport.airport_address
             )
             
             statics = []

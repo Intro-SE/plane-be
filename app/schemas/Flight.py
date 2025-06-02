@@ -6,8 +6,9 @@ from typing import List, Optional
 class FlightRouteRef(BaseModel):
     flight_route_id: str
     departure_airport: str
+    departure_address: str
     arrival_airport: str
-
+    arrival_address: str
     class Config:
         from_attributes = True
 
@@ -89,7 +90,7 @@ class FlightInDB(FlightBase):
 
 class IntermediateStop(BaseModel):
     stop_name: str
-    stop_duration_minutes: int = Field(..., ge=0)
+    stop_time: int = Field(..., ge=0)
 
     class Config:
         from_attributes = True
