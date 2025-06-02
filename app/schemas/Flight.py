@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime, time
 from typing import List, Optional
 
+
 class FlightRouteRef(BaseModel):
     flight_route_id: str
     departure_airport: str
@@ -15,8 +16,9 @@ class TicketClassStatisticsRef(BaseModel):
     ticket_class_id: str
     ticket_class_name: str
     total_seats: int
-    available_seats :int
-    booked_seats : int
+    available_seats: int
+    booked_seats: int
+
     class Config:
         from_attributes = True
 
@@ -30,7 +32,7 @@ class BookingTicketRef(BaseModel):
 
     class Config:
         from_attributes = True
-        
+
 
 class FlightBase(BaseModel):
     flight_id: str
@@ -66,21 +68,52 @@ class FlightUpdate(BaseModel):
 
 
 class FlightInDB(FlightBase):
-    flight_route_id: FlightRouteRef
+    flight_route: FlightRouteRef
     ticket_class_statistics: List[TicketClassStatisticsRef] = []
-    bookings: List[BookingTicketRef] = []
 
     @property
-    def booked_tickets(self) -> int:
-        return len(self.bookings)
+    def booked_seats(self) -> int:
+        return sum(stat.booked_seats for stat in self.ticket_class_statistics)
 
     @property
-    def available_tickets(self) -> int:
-        return self.total_seats - self.booked_tickets
+    def available_seats(self) -> int:
+        return sum(stat.available_seats for stat in self.ticket_class_statistics)
 
     @property
     def formatted_departure_datetime(self) -> str:
         return f"{self.departure_date.strftime('%d/%m/%Y')} {self.departure_time.strftime('%H:%M')}"
+
+    class Config:
+        from_attributes = True
+
+
+class IntermediateStop(BaseModel):
+    stop_name: str
+    stop_duration_minutes: int = Field(..., ge=0)
+
+    class Config:
+        from_attributes = True
+
+
+class SeatSummary(BaseModel):
+    total_seats: int
+    occupied_seats: int
+    empty_seats: int
+    ticket_class_statistics: List[TicketClassStatisticsRef]
+
+    class Config:
+        from_attributes = True
+
+
+class FlightOut(BaseModel):
+    flight_id: str
+    departure_date: datetime
+    departure_time: time
+    arrival_time: time
+    passengers_number: int
+    flight_route: FlightRouteRef
+    intermediate_stops: List[IntermediateStop]
+    seat_summary: SeatSummary
 
     class Config:
         from_attributes = True

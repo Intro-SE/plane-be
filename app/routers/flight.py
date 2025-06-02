@@ -15,7 +15,7 @@ async def get_all_flights(skip:int = 0, limit: int = 100, db: AsyncSession = Dep
         result = []
         for flight in flights:
             flight_route = FlightRouteRef(
-                flight_route_id=flight.flight_route.route_id,
+                flight_route_id=flight.flight_route.flight_route_id,
                 departure_airport=flight.flight_route.departure_airport.airport_name,
                 arrival_airport=flight.flight_route.arrival_airport.airport_name
             )
@@ -34,12 +34,12 @@ async def get_all_flights(skip:int = 0, limit: int = 100, db: AsyncSession = Dep
             flight_data = FlightInDB(
                 flight_id=flight.flight_id,
                 flight_route_id=flight.flight_route_id,
-                departure_date=flight.departure_date,
+                departure_date=flight.flight_date,
                 departure_time=flight.departure_time,
-                duration=flight.duration,
-                total_seats=flight.total_seats,
+                duration=flight.flight_duration,
+                total_seats=flight.flight_seat_count,
                 flight_route=flight_route,
-                static_class_ticket=static_class_ticket
+                ticket_class_statistics=statics
             )
             result.append(flight_data)
             
