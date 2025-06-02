@@ -13,6 +13,6 @@ class Flight(Base):
     flight_seat_count = Column(Integer, nullable=False)
 
     # Relationships
-    flight_route = relationship("FlightRoute", back_populates="flights", lazy="joined")
-    ticket_class_statistics = relationship("TicketClassStatistics", back_populates="flight", lazy="joined")
-    booking_tickets = relationship("BookingTicket", back_populates="flight", lazy="joined")
+    flight_route = relationship("FlightRoute", back_populates="flights", lazy="selectin")
+    ticket_class_statistics = relationship("TicketClassStatistics", back_populates="flight", lazy="selectin")
+    booking_tickets = relationship("BookingTicket", back_populates="flight", lazy="selectin")

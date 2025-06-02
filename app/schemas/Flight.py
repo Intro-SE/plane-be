@@ -89,6 +89,7 @@ class FlightInDB(FlightBase):
 
 
 class IntermediateStop(BaseModel):
+    stop_number: int
     stop_name: str
     stop_time: int = Field(..., ge=0)
 
@@ -96,11 +97,10 @@ class IntermediateStop(BaseModel):
         from_attributes = True
 
 
-class SeatSummary(BaseModel):
-    total_seats: int
-    occupied_seats: int
+class SeatInformation(BaseModel):
     empty_seats: int
-    ticket_class_statistics: List[TicketClassStatisticsRef]
+    occupied_seats: int
+
 
     class Config:
         from_attributes = True
@@ -109,12 +109,17 @@ class SeatSummary(BaseModel):
 class FlightOut(BaseModel):
     flight_id: str
     departure_date: datetime
+    total_seats: int
+    departure_address: str
     departure_time: time
+    departure_airport: str
+    
     arrival_time: time
-    passengers_number: int
-    flight_route: FlightRouteRef
+    arrival_airport: str
+    arrival_address: str
+    
     intermediate_stops: List[IntermediateStop]
-    seat_summary: SeatSummary
+    seat_information: SeatInformation
 
     class Config:
         from_attributes = True

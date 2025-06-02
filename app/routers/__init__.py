@@ -5,10 +5,16 @@ from .booking_ticket import router as ticket_router
 from .airport import router as airport_router
 from .flightroute import router as flightroute_router
 from .flight import router as flight_router
+from .flight_lookup import router as flights
 api_router = APIRouter()
+
 api_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
-api_router.include_router(employee_router, prefix="/employee", tags=["EmployeeAccount"])
-api_router.include_router(flight_router, prefix="/flight", tags=["Flight"])
-api_router.include_router(ticket_router, prefix= "/tickets", tags=["Tickets"])
-api_router.include_router(airport_router, prefix="/airports", tags= ["Aiports"])
-api_router.include_router(flightroute_router, prefix="/flightroute", tags= ["FlightRoute"])
+api_router.include_router(flights, prefix="/flight", tags=["Flight"])
+
+
+
+api_router.include_router(employee_router, prefix="/employee_crud", tags=["EmployeeAccount_CRUD"])
+api_router.include_router(flight_router, prefix="/flights_crud", tags=["Flight_CRUD"])
+api_router.include_router(ticket_router, prefix= "/tickets_crud", tags=["Tickets_CRUD"])
+api_router.include_router(airport_router, prefix="/airports_crud", tags= ["Aiports_CRUD"])
+api_router.include_router(flightroute_router, prefix="/flightroutes_crud", tags= ["FlightRoute_CRUD"])
