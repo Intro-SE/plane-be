@@ -1,15 +1,6 @@
 -- B1: Tạo bảng + PK
 CREATE TABLE Rules
-CREATE TABLE Rules
 (
-    max_airports INT DEFAULT 10 CHECK (max_airports >= 0),
-	max_transit_airports INT DEFAULT 2 CHECK (max_transit_airports >= 0),
-    min_flight_time INT DEFAULT 30 CHECK (min_flight_time > 0),
-	min_stop_time INT DEFAULT 10 CHECK (min_stop_time > 0),
-	max_stop_time INT DEFAULT 20 CHECK (max_stop_time >= min_stop_time),
-    latest_booking_time INT DEFAULT 1 CHECK (latest_booking_time > 0),
-	latest_cancel_time INT DEFAULT 1 CHECK (latest_cancel_time > 0),
-	ticket_class_count INT DEFAULT 2 CHECK (ticket_class_count > 0)
     max_airports INT DEFAULT 10 CHECK (max_airports >= 0),
 	max_transit_airports INT DEFAULT 2 CHECK (max_transit_airports >= 0),
     min_flight_time INT DEFAULT 30 CHECK (min_flight_time > 0),
@@ -20,7 +11,6 @@ CREATE TABLE Rules
 	ticket_class_count INT DEFAULT 2 CHECK (ticket_class_count > 0)
 );
 
-CREATE TABLE Airport
 CREATE TABLE Airport
 (
 	airport_id VARCHAR(50) NOT NULL,
@@ -30,8 +20,6 @@ CREATE TABLE Airport
 );
 
 
-
-CREATE TABLE FlightRoute
 CREATE TABLE FlightRoute
 (
 	flight_route_id VARCHAR(50) NOT NULL,
@@ -40,7 +28,6 @@ CREATE TABLE FlightRoute
 	CONSTRAINT PK_FlightRoute PRIMARY KEY (flight_route_id)
 );
 
-CREATE TABLE Flight
 CREATE TABLE Flight
 (
 	flight_id VARCHAR(50) NOT NULL,
@@ -53,7 +40,6 @@ CREATE TABLE Flight
 );
 
 CREATE TABLE FlightDetail
-CREATE TABLE FlightDetail
 (
 	flight_detail_id VARCHAR(50) NOT NULL,
 	flight_route_id VARCHAR(50) NOT NULL,
@@ -64,14 +50,12 @@ CREATE TABLE FlightDetail
 );
 
 CREATE TABLE TicketClass
-CREATE TABLE TicketClass
 (
 	ticket_class_id VARCHAR(50) NOT NULL,
 	ticket_class_name VARCHAR(50) NOT NULL,
 	CONSTRAINT PK_TicketClass PRIMARY KEY (ticket_class_id)
 );
 
-CREATE TABLE TicketClassStatistics
 CREATE TABLE TicketClassStatistics
 (
 	ticket_class_statistics_id varchar(50) NOT NULL,
@@ -84,7 +68,6 @@ CREATE TABLE TicketClassStatistics
 );
 
 CREATE TABLE TicketPrice
-CREATE TABLE TicketPrice
 (
 	ticket_price_id VARCHAR(50) NOT NULL,
 	flight_route_id VARCHAR(50) NOT NULL,
@@ -93,7 +76,6 @@ CREATE TABLE TicketPrice
 	CONSTRAINT PK_TicketPrice PRIMARY KEY (ticket_price_id)
 );
 
-CREATE TABLE Employee
 CREATE TABLE Employee
 (
 	employee_id VARCHAR(50) NOT NULL,
@@ -107,7 +89,6 @@ CREATE TABLE Employee
 	CONSTRAINT PK_Employee PRIMARY KEY (employee_id)
 );
 
-CREATE TABLE Booking_Ticket
 CREATE TABLE Booking_Ticket
 (
 	booking_ticket_id VARCHAR(50) NOT NULL,
@@ -123,7 +104,6 @@ CREATE TABLE Booking_Ticket
 	booking_date DATE NOT NULL,
 	-- -- Quan trọng: True (Đã xuất vé - Là vé chuyến bay), False (Chỉ là phiếu đặt chỗ)
 	ticket_status BOOLEAN NOT NULL,
-	ticket_status BOOLEAN NOT NULL,
 	-- Thông tin nhân viên
 	employee_id VARCHAR(50) NOT NULL,
 	CONSTRAINT PK_Booking_Ticket PRIMARY KEY (booking_ticket_id)
@@ -138,7 +118,6 @@ ALTER TABLE Flight
     FOREIGN KEY (flight_route_id)
     REFERENCES FlightRoute(flight_route_id);
 
--- Bảng Airport
 -- Bảng Airport
 
 -- Bảng FlightRoute
@@ -204,7 +183,6 @@ ALTER TABLE TicketPrice
 -- 	check (year(getdate()) - NAMSINH >= 18)
 
 -- Bảng Employee
--- Bảng Employee
 
 -- Bảng Booking_Ticket
 ALTER TABLE Booking_Ticket
@@ -230,11 +208,7 @@ ALTER TABLE Booking_Ticket
 -- Nhập DL
 -- Rules
 INSERT INTO Rules VALUES (10, 2, 30, 10, 20, 1, 1, 2);
--- Rules
-INSERT INTO Rules VALUES (10, 2, 30, 10, 20, 1, 1, 2);
 
--- Airport
-INSERT INTO Airport VALUES 
 -- Airport
 INSERT INTO Airport VALUES 
 ('SB01', 'Nội Bài', 'Hà Nội'),
@@ -250,8 +224,6 @@ INSERT INTO Airport VALUES
 
 -- FlightRoute (20 tuyến bay từ các sân bay khác nhau)
 INSERT INTO FlightRoute VALUES 
--- FlightRoute (20 tuyến bay từ các sân bay khác nhau)
-INSERT INTO FlightRoute VALUES 
 ('TB01', 'SB01', 'SB02'), ('TB02', 'SB02', 'SB03'), ('TB03', 'SB03', 'SB04'),
 ('TB04', 'SB04', 'SB05'), ('TB05', 'SB05', 'SB06'), ('TB06', 'SB06', 'SB07'),
 ('TB07', 'SB07', 'SB08'), ('TB08', 'SB08', 'SB09'), ('TB09', 'SB09', 'SB10'),
@@ -260,8 +232,6 @@ INSERT INTO FlightRoute VALUES
 ('TB16', 'SB06', 'SB08'), ('TB17', 'SB07', 'SB09'), ('TB18', 'SB08', 'SB10'),
 ('TB19', 'SB09', 'SB01'), ('TB20', 'SB10', 'SB02');
 
--- Flight
-INSERT INTO Flight VALUES 
 -- Flight
 INSERT INTO Flight VALUES 
 ('CB01', 'TB01', '2025-06-01', '08:00:00', 90, 180),
@@ -277,8 +247,6 @@ INSERT INTO Flight VALUES
 
 -- FlightDetail
 INSERT INTO FlightDetail VALUES 
--- FlightDetail
-INSERT INTO FlightDetail VALUES 
 ('CTCB01', 'TB01', 'SB03', 15, 'Dừng nạp nhiên liệu'),
 ('CTCB02', 'TB02', 'SB04', 20, 'Dừng kỹ thuật'),
 ('CTCB03', 'TB03', 'SB05', 10, 'Dừng ăn trưa'),
@@ -292,14 +260,10 @@ INSERT INTO FlightDetail VALUES
 
 -- TicketClass
 INSERT INTO TicketClass VALUES 
--- TicketClass
-INSERT INTO TicketClass VALUES 
 ('HV01', 'Phổ thông'),
 ('HV02', 'Thương gia'),
 ('HV03', 'Hạng nhất');
 
--- TicketClassStatistics
-INSERT INTO TicketClassStatistics VALUES 
 -- TicketClassStatistics
 INSERT INTO TicketClassStatistics VALUES 
 ('TK01', 'CB01', 'HV01', 100, 70, 30),
@@ -320,8 +284,6 @@ INSERT INTO TicketClassStatistics VALUES
 
 -- TicketPrice
 INSERT INTO TicketPrice VALUES 
--- TicketPrice
-INSERT INTO TicketPrice VALUES 
 ('DG01', 'TB01', 'HV01', 1000000), ('DG02', 'TB01', 'HV02', 2000000), ('DG03', 'TB01', 'HV03', 3000000),
 ('DG04', 'TB02', 'HV01', 950000),  ('DG05', 'TB02', 'HV02', 1950000), ('DG06', 'TB02', 'HV03', 2950000),
 ('DG07', 'TB03', 'HV01', 1100000), ('DG08', 'TB03', 'HV02', 2100000), ('DG09', 'TB03', 'HV03', 3100000),
@@ -335,16 +297,7 @@ INSERT INTO Employee VALUES
 ('NV03', 'admin3', 'pass3', 'Lê Văn C', '123456787', 'Nam', '0909000003', '2025-01-03'),
 ('NV04', 'admin4', 'pass4', 'Phạm Thị D', '123456786', 'Nữ', '0909000004', '2025-01-04'),
 ('NV05', 'admin5', 'pass5', 'Hoàng Văn E', '123456785', 'Nam', '0909000005', '2025-01-05');
--- Employee
-INSERT INTO Employee VALUES 
-('NV01', 'admin1', 'pass1', 'Nguyễn Văn A', '123456789', 'Nam', '0909000001', '2025-01-01'),
-('NV02', 'admin2', 'pass2', 'Trần Thị B', '123456788', 'Nữ', '0909000002', '2025-01-02'),
-('NV03', 'admin3', 'pass3', 'Lê Văn C', '123456787', 'Nam', '0909000003', '2025-01-03'),
-('NV04', 'admin4', 'pass4', 'Phạm Thị D', '123456786', 'Nữ', '0909000004', '2025-01-04'),
-('NV05', 'admin5', 'pass5', 'Hoàng Văn E', '123456785', 'Nam', '0909000005', '2025-01-05');
 
--- Booking_Ticket
-INSERT INTO Booking_Ticket VALUES 
 -- Booking_Ticket
 INSERT INTO Booking_Ticket VALUES 
 ('PDC01', 'CB01', 'Lê Thị A', '111111111', 'Nữ', '0912340001', 'HV01', 1000000, '2025-05-01', TRUE, 'NV01'),
@@ -367,6 +320,5 @@ INSERT INTO Booking_Ticket VALUES
 ('PDC18', 'CB04', 'Nguyễn Văn R', '191919191', 'Nam', '0912340018', 'HV03', 3100000, '2025-05-14', TRUE, 'NV03'),
 ('PDC19', 'CB05', 'Trần Thị S', '202020202', 'Nữ', '0912340019', 'HV01', 1200000, '2025-05-15', TRUE, 'NV04'),
 ('PDC20', 'CB06', 'Lê Văn T', '212121212', 'Nam', '0912340020', 'HV02', 2100000, '2025-05-16', FALSE, 'NV05');
-
 
 
