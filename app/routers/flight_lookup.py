@@ -20,14 +20,20 @@ async def get_all(skip: int = 0, limit: int = 100, db : AsyncConnection = Depend
                 IntermediateStop(
                     stop_number=idx + 1,
                     stop_name=detail.transit_airport.airport_name,
-                    stop_time=detail.stop_time
+                    stop_time=detail.stop_time,
+                    note = detail.note
                 )
                 for idx, detail in enumerate(flight.flight_route.flight_details)
             ]
 
             seat_info = SeatInformation(
+                seat_type=[stat.ticket_class.ticket_class_name for stat in flight.ticket_class_statistics],
+                seat_price=[
+                    stat.ticket_class.ticket_prices[0].price if stat.ticket_class.ticket_prices else 0
+                    for stat in flight.ticket_class_statistics
+                ],
+                empty_type_seats=[stat.available_seats for stat in flight.ticket_class_statistics],
                 empty_seats=sum(stat.available_seats for stat in flight.ticket_class_statistics),
-
                 occupied_seats=sum(stat.booked_seats for stat in flight.ticket_class_statistics),
             )
             

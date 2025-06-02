@@ -91,16 +91,18 @@ class FlightInDB(FlightBase):
 class IntermediateStop(BaseModel):
     stop_number: int
     stop_name: str
-    stop_time: int = Field(..., ge=0)
-
+    stop_time: int
+    note: Optional[str]
     class Config:
         from_attributes = True
 
 
 class SeatInformation(BaseModel):
+    seat_type: List[str]
+    seat_price: List[int]
+    empty_type_seats: List[int]
     empty_seats: int
     occupied_seats: int
-
 
     class Config:
         from_attributes = True
