@@ -109,7 +109,7 @@ class SeatInformation(BaseModel):
 
 
 class FlightOut(BaseModel):
-    flight_id: str
+    flight_id: Optional[str] = None
     departure_date: datetime
     total_seats: int
     departure_address: str
