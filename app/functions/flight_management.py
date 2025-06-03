@@ -11,49 +11,19 @@ from app.models.TicketClass import TicketClass
 from pydantic import BaseModel
 from datetime import datetime, time, date
 from sqlalchemy import select, and_, or_
-
-
-class FlightSearch(BaseModel):
-    flight_id: Optional[str] = None
-    departure_address: Optional[str] = None
-    departure_date: Optional[date] = None
-    
-    arrival_address: Optional[str] = None
-    
-    min_time: Optional[time] = None
-    max_time: Optional[time] = None
-    is_empty: Optional[bool] = False
-    
-    least_empty_seats: Optional[int] = None
-    total_seats: Optional[int] = None
-
-
-
-    
-async def get_all_flights(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[Flight]:
-    result = await db.execute(select(Flight)
-                              .options(
-                                selectinload(Flight.flight_route)
-                                .selectinload(FlightRoute.departure_airport),
-                                selectinload(Flight.flight_route)
-                                .selectinload(FlightRoute.arrival_airport),
-                                selectinload(Flight.flight_route)
-                                .selectinload(FlightRoute.flight_details)
-                                .selectinload(FlightDetail.transit_airport),
-                                selectinload(Flight.ticket_class_statistics)
-                                .selectinload(TicketClassStatistics.ticket_class)
-                                .selectinload(TicketClass.ticket_prices),
-                              ).offset(skip).limit(limit))
-    
-    return result.scalars().all()
-
-
+from app.functions.flight_lookup import FlightSearch
 
 
 
 async def find_flights_by_filter(db: AsyncSession,filters: FlightSearch, skip: int = 0, limit: int = 100) -> List[Flight]:
     conditions = []
     
+    
+    if filters.flight_id:
+        conditions.append(Flight.flight_id == filters.flight_id)
+        
+        
+        
     if filters.departure_address:
         conditions.append(
             Flight.flight_route.has(
@@ -84,7 +54,17 @@ async def find_flights_by_filter(db: AsyncSession,filters: FlightSearch, skip: i
     if filters.max_time:
         conditions.append(Flight.departure_time <= filters.max_time)
         
+    if filters.least_empty_seats:
+        conditions.append(
+            Flight.ticket_class_statistics.any(
+                TicketClassStatistics.available_seats >= filters.least_empty_seats
+            )
+        )
     
+    if filters.total_seats:
+        conditions.append(Flight.flight_seat_count >= filters.total_seats)
+        
+        
     if filters.is_empty:
         conditions.append(Flight.ticket_class_statistics.any(TicketClassStatistics.available_seats > 0))
         
