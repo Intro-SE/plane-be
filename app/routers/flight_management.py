@@ -1,7 +1,7 @@
     
     
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.functions.flight_management import find_flights_by_filter, FlightCreate, create_new_flight, update_flight
+from app.functions.flight_management import find_flights_by_filter, FlightCreate, create_new_flight, update_flight, delete_flight
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException, status, Depends
 from app.deps import get_db
@@ -160,3 +160,9 @@ async def update(flight: FlightCreate, db: AsyncSession = Depends(get_db)):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+    
+@router.delete("/delete")
+async def delete_flights(flight_ids: List[str], db: AsyncSession = Depends(get_db)):
+    message = await delete_flight(flight_ids, db)
+    return {"log": message}

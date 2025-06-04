@@ -14,5 +14,5 @@ class Flight(Base):
 
     # Relationships
     flight_route = relationship("FlightRoute", back_populates="flights", lazy="selectin")
-    ticket_class_statistics = relationship("TicketClassStatistics", back_populates="flight", lazy="selectin")
-    booking_tickets = relationship("BookingTicket", back_populates="flight", lazy="selectin")
+    ticket_class_statistics = relationship("TicketClassStatistics", back_populates="flight", lazy="selectin", cascade= "all, delete-orphan")
+    booking_tickets = relationship("BookingTicket", back_populates="flight", lazy="selectin", cascade= "all, delete-orphan")

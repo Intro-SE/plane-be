@@ -13,7 +13,7 @@ from datetime import datetime, time, date
 from sqlalchemy import select, and_, or_, func
 from app.functions.flight_lookup import FlightSearch
 from fastapi import HTTPException
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 import re
 
 async def generate_next_id(session):
@@ -235,5 +235,21 @@ async def update_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
     
     
     
+async def delete_flight(flight_ids: List[str], db: AsyncSession) -> Optional[Flight]:
+    try :
+        result = await db.execute(select(Flight).where(Flight.flight_id.in_(flight_ids)))
+        flights = result.scalars().all()
+        
+        if not flights:
+            raise HTTPException(status_code= 404, detail= "Flights not exist")
+        
+        for flight in flights:
+            await db.delete(flight)
+            
+        await db.commit()
+        
+        return "Delete Successfully"
     
-    
+    except SQLAlchemyError as e:
+        await db.rollback()
+        return f"Delete Failed: {str(e)}"
