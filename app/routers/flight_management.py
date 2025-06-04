@@ -11,7 +11,7 @@ from app.functions.flight_lookup import FlightSearch
 
 router = APIRouter()
     
-@router.post("/search", response_model=List[FlightOut])
+@router.get("/search", response_model=List[FlightOut])
 async def search_flights(filters: FlightSearch, skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
     try:
         flights = await find_flights_by_filter(db, filters, skip, limit)
