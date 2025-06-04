@@ -166,7 +166,7 @@ async def create_new_flight(db: AsyncSession, flight : FlightCreate) -> Flight:
         result  = await db.execute(select(TicketClass).where(TicketClass.ticket_class_name == type_name))
         ticket_class = result.unique().scalar_one_or_none()
         if not ticket_class:
-            raise HTTPException(status_code=404, detail=f"Hạng vé '{type_name}' không tồn tại")
+            raise HTTPException(status_code=404, detail=f"Ticket class'{type_name}' not exists")
         ticket_class_statistics_id = await generate_next_id(db)
         stats = TicketClassStatistics(
             ticket_class_statistics_id = ticket_class_statistics_id,
@@ -181,3 +181,59 @@ async def create_new_flight(db: AsyncSession, flight : FlightCreate) -> Flight:
     await db.commit()
     await db.refresh(new_flight)
     return new_flight
+
+
+
+
+
+async def update_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
+    
+    result = await db.execute(select(Flight).where(Flight.flight_id == flight.flight_id)
+                              .options(
+                                  selectinload(Flight.flight_route).selectinload(FlightRoute.departure_airport),
+                                  selectinload(Flight.flight_route).selectinload(FlightRoute.arrival_airport),
+                                  selectinload(Flight.ticket_class_statistics).selectinload(TicketClassStatistics.ticket_class)
+                              ))
+    exist_flight = result.unique().scalar_one_or_none()
+    if not exist_flight:
+        raise HTTPException(status_code= 404, detail= "Flight not exists")
+    
+    
+    exist_flight.flight_route_id = flight.flight_route
+    exist_flight.flight_date = flight.departure_date
+    exist_flight.departure_time = flight.departure_time
+    exist_flight.flight_duration = flight.flight_duration
+    exist_flight.flight_seat_count = flight.total_seats
+    
+    flight.departure_airport = exist_flight.flight_route.departure_airport.airport_name
+    flight.arrival_airport = exist_flight.flight_route.arrival_airport.airport_name
+
+    await db.execute(TicketClassStatistics.__table__.delete().where(TicketClassStatistics.flight_id == flight.flight_id))
+    
+    
+    for type_name, empty_seat in zip(flight.seat_type, flight.empty_type_seats):
+        result = await db.execute(select(TicketClass).where(TicketClass.ticket_class_name == type_name))
+        
+        ticket_class = result.unique().scalar_one_or_none()
+        
+        if not ticket_class:
+            raise HTTPException(status_code=404, detail= f"Ticket class {type_name} not exists")
+        ticket_class_statistics_id = await generate_next_id(db)
+        stats = TicketClassStatistics(
+            ticket_class_statistics_id = ticket_class_statistics_id,
+            flight_id = flight.flight_id,
+            ticket_class_id = ticket_class.ticket_class_id,
+            total_seats = flight.total_seats,
+            available_seats = empty_seat,
+            booked_seats = 0
+        )
+        db.add(stats)
+        
+    await db.commit()
+    await db.refresh(exist_flight)
+    return exist_flight
+    
+    
+    
+    
+    
