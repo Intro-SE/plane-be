@@ -1,4 +1,4 @@
-from app.schemas.Flight import FlightCreate, FlightUpdate
+from app.schemas.Flight import FlightUpdate
 from app.models.Flight import Flight
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +12,8 @@ import re
 from typing import Optional, List
 from datetime import datetime
 from sqlalchemy import func
+from app.functions.flight_management import FlightCreate
+
 
 async def get_id(db: AsyncSession, flight_id: str) -> Optional[Flight]:
     result = await db.execute(select(Flight).where(Flight.flight_id == flight_id))
@@ -47,19 +49,17 @@ async def generate_next_id(session):
         return f"CB{next_num:02d}" 
 
     
-async def create_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
-    
-    flight_id = await generate_next_id(db)
-    
+async def create_flight(db: AsyncSession, flight: FlightCreate) -> Flight:    
     
     new_flight = Flight(
-        flight_id = flight_id,
-        flight_route_id= flight.flight_route_id,
-        departure_date= flight.departure_date,
-        departure_time=flight.departure_time,
-        duration= flight.duration,
-        total_seats=flight.total_seats,
+        flight_id = flight.flight_id,
+        flight_route_id = flight.flight_route,
+        flight_date = flight.departure_date,
+        departure_time = flight.departure_time,
+        flight_duration = flight.flight_duration,
+        flight_seat_count = flight.total_seats
     )
+    
     db.add(new_flight)
     await db.commit()
     await db.refresh(new_flight)

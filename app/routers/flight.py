@@ -4,7 +4,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, HTTPException, Depends, status
 from app.deps import get_db
 from app.models.Flight import Flight
-from app.schemas.Flight import FlightCreate, FlightInDB, FlightUpdate, FlightRouteRef, BookingTicketRef, TicketClassStatisticsRef
+from app.schemas.Flight import FlightInDB, FlightUpdate, FlightRouteRef, BookingTicketRef, TicketClassStatisticsRef
+from sqlalchemy.future import select
+from sqlalchemy.orm import joinedload
+from app.functions.flight_management import FlightCreate
+from app.models.FlightRoute import FlightRoute
 
 router = APIRouter()
 
@@ -52,29 +56,42 @@ async def get_all_flights(skip:int = 0, limit: int = 100, db: AsyncSession = Dep
     
 
 
-@router.post("/", response_model=FlightInDB, status_code= status.HTTP_201_CREATED)
-async def create_new_flight(flight: FlightCreate, db: AsyncSession = Depends(get_db)):
-    try: 
-        new_flight = await create_flight(db,flight)
-        return new_flight
-    except Exception as e:
-        raise HTTPException(status_code= 500, detail= str(e))
-    
-    
-@router.put("/", response_model=FlightInDB, status_code= status.HTTP_202_ACCEPTED)
-async def update_info(flight_id: str, obj_in : FlightUpdate,db: AsyncSession = Depends(get_db)):
-    db_obj = await get_id(db, flight_id)
-    
-    if not db_obj:
-        raise HTTPException(status_code= 404, detail= "Flight not found")
-    
-    return await update_flight(db, db_obj, obj_in)
+# @router.post("/", response_model=FlightInDB, status_code=status.HTTP_201_CREATED)
+# async def create_new_flight(flight: FlightCreate, db: AsyncSession = Depends(get_db)):
+#     try:
+#         new_flight = await create_flight(db, flight)
+#         result = await db.execute(
+#             select(Flight)
+#             .options(
+#                 joinedload(Flight.flight_route)
+#                 .joinedload(FlightRoute.departure_airport),
+#                 joinedload(Flight.flight_route)
+#                 .joinedload(FlightRoute.arrival_airport),
+#                 joinedload(Flight.ticket_class_statistics)
+#             )
+#             .where(Flight.flight_id == new_flight.flight_id)
+#         )
+#         full_flight = result.unique().scalar_one()
+#         return full_flight
 
-@router.delete("/", response_model=FlightInDB, status_code= status.HTTP_202_ACCEPTED)
-async def delete_info(flight_id: str,db: AsyncSession = Depends(get_db)):
-    db_obj = await get_id(db ,flight_id)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
     
-    if not db_obj:
-        raise HTTPException(status_code= 404, detail= "Flight not found")
     
-    return await delete_flight(db, db_obj)
+# @router.put("/", response_model=FlightInDB, status_code= status.HTTP_202_ACCEPTED)
+# async def update_info(flight_id: str, obj_in : FlightUpdate,db: AsyncSession = Depends(get_db)):
+#     db_obj = await get_id(db, flight_id)
+    
+#     if not db_obj:
+#         raise HTTPException(status_code= 404, detail= "Flight not found")
+    
+#     return await update_flight(db, db_obj, obj_in)
+
+# @router.delete("/", response_model=FlightInDB, status_code= status.HTTP_202_ACCEPTED)
+# async def delete_info(flight_id: str,db: AsyncSession = Depends(get_db)):
+#     db_obj = await get_id(db ,flight_id)
+    
+#     if not db_obj:
+#         raise HTTPException(status_code= 404, detail= "Flight not found")
+    
+#     return await delete_flight(db, db_obj)
