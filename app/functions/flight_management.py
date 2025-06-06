@@ -135,7 +135,8 @@ async def create_new_flight(db: AsyncSession, flight : FlightCreate) -> Flight:
     result=await  db.execute(select(FlightRoute).where(FlightRoute.flight_route_id == flight.flight_route)
                              .options(
                                  selectinload(FlightRoute.departure_airport),
-                                 selectinload(FlightRoute.arrival_airport)
+                                 selectinload(FlightRoute.arrival_airport),
+                                 selectinload(FlightRoute.flight_details),
                              ))
     
     route = result.unique().scalar_one_or_none()

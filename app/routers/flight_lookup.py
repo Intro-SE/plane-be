@@ -44,6 +44,7 @@ async def get_all(skip: int = 0, limit: int = 100, db : AsyncSession = Depends(g
             
             flight_data = FlightOut(
                 flight_id=flight.flight_id,
+                flight_route_id= flight.flight_route_id,
                 departure_date=flight.flight_date,
                 total_seats=flight.flight_seat_count,
 
