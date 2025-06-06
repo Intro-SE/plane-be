@@ -8,6 +8,8 @@ from app.deps import get_db
 from app.schemas.Flight import FlightOut,IntermediateStop, SeatInformation
 from datetime import datetime, timedelta
 from app.functions.flight_lookup import FlightSearch
+from pydantic import BaseModel
+from app.crud.ticket_class import get_ticket_class
 
 router = APIRouter()
     
@@ -169,3 +171,38 @@ async def update(flight: FlightCreate, db: AsyncSession = Depends(get_db)):
 async def delete_flights(flight_ids: List[str], db: AsyncSession = Depends(get_db)):
     message = await delete_flight(flight_ids, db)
     return {"log": message}
+
+
+
+class TicketClassOut(BaseModel):
+    ticket_class_id: Optional[str] = None
+    ticket_class_name: Optional[str] = None
+    price: Optional[int] = None
+    available_seats: Optional[int] = None
+    
+
+    
+@router.get("/ticketclass", response_model=List[TicketClassOut])
+async def get_all_ticket_class(flight_id: str,skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+    try:
+        tickets = await get_ticket_class(db, flight_id, skip, limit)
+
+        result = []
+        
+        for ticket in tickets:
+            ticket_class = ticket.ticket_class
+            ticket_price = ticket_class.ticket_prices[0].price if ticket_class.ticket_prices else None    
+            stat = TicketClassOut(
+                ticket_class_id = ticket.ticket_class_id,
+                ticket_class_name = ticket.ticket_class.ticket_class_name,
+                price=ticket_price,
+                available_seats=ticket.available_seats
+            )
+
+            result.append(stat)
+        
+        
+        return result 
+    
+    except Exception as e:
+        raise HTTPException(status_code= 500, detail= str(e))
