@@ -179,8 +179,21 @@ async def create_new_flight(db: AsyncSession, flight : FlightCreate) -> Flight:
         db.add(stats)
         
     await db.commit()
-    await db.refresh(new_flight)
-    return new_flight
+    
+    # Reload the flight with all necessary relationships for the response
+    result = await db.execute(
+        select(Flight)
+        .where(Flight.flight_id == flight.flight_id)
+        .options(
+            selectinload(Flight.flight_route).selectinload(FlightRoute.departure_airport),
+            selectinload(Flight.flight_route).selectinload(FlightRoute.arrival_airport),
+            selectinload(Flight.flight_route).selectinload(FlightRoute.flight_details).selectinload(FlightDetail.transit_airport),
+            selectinload(Flight.ticket_class_statistics).selectinload(TicketClassStatistics.ticket_class).selectinload(TicketClass.ticket_prices)
+        )
+    )
+    
+    refreshed_flight = result.unique().scalar_one()
+    return refreshed_flight
 
 
 
@@ -230,8 +243,21 @@ async def update_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
         db.add(stats)
         
     await db.commit()
-    await db.refresh(exist_flight)
-    return exist_flight
+    
+    # Reload the flight with all necessary relationships for the response
+    result = await db.execute(
+        select(Flight)
+        .where(Flight.flight_id == flight.flight_id)
+        .options(
+            selectinload(Flight.flight_route).selectinload(FlightRoute.departure_airport),
+            selectinload(Flight.flight_route).selectinload(FlightRoute.arrival_airport),
+            selectinload(Flight.flight_route).selectinload(FlightRoute.flight_details).selectinload(FlightDetail.transit_airport),
+            selectinload(Flight.ticket_class_statistics).selectinload(TicketClassStatistics.ticket_class).selectinload(TicketClass.ticket_prices)
+        )
+    )
+    
+    refreshed_flight = result.unique().scalar_one()
+    return refreshed_flight
     
     
     
