@@ -8,11 +8,14 @@ from datetime import timedelta
 from pydantic import BaseModel
 from passlib.exc import UnknownHashError
 from app.core.security import get_password_hash
+from app.schemas.Employee import EmployeeBase
+
 router = APIRouter()
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 class LoginResponse(BaseModel):
+    employee: EmployeeBase
     access_token: str
     token_type: str = "bearer"
 
@@ -55,7 +58,7 @@ async def login(
     access_token = create_access_token(
         data={"sub": user.employee_username}, expires_delta=access_token_expires
     )
-    return {"account_id": user.employee_id,"access_token": access_token, "token_type": "bearer"}
+    return {"employee" : user ,"access_token": access_token, "token_type": "bearer"}
 
 
 @router.post("/logout")
