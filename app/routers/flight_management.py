@@ -13,7 +13,7 @@ from app.crud.ticket_class import get_ticket_class
 
 router = APIRouter()
     
-@router.get("/search", response_model=List[FlightOut])
+@router.post("/search", response_model=List[FlightOut])
 async def search_flights(filters: FlightSearch, skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
     try:
         flights = await find_flights_by_filter(db, filters, skip, limit)
