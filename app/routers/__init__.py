@@ -8,12 +8,14 @@ from .flight import router as flight_router
 from .flight_lookup import router as flights
 from .flight_management import router as flights_management
 from .booking_management import router as bookings_management
+from .flight_ticket_management import router as flight_tickets_management
 api_router = APIRouter()
 
 api_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 api_router.include_router(flights, prefix="/flight", tags=["Flight"])
 api_router.include_router(flights_management,prefix= "/flight_management", tags= ["Flight Management"])
 api_router.include_router(bookings_management,prefix= "/booking_management", tags= ["Booking Management"])
+api_router.include_router(flight_tickets_management,prefix= "/flight_ticket_management", tags= ["Flight Ticket Management"])
 
 
 api_router.include_router(employee_router, prefix="/employee_crud", tags=["EmployeeAccount_CRUD"])
