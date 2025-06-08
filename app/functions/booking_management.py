@@ -15,6 +15,7 @@ from app.models.TicketPrice import TicketPrice
 from app.models.Employee import Employee
 from app.models.FlightRoute import FlightRoute
 import re
+from sqlalchemy.exc import SQLAlchemyError
 
 class BookingTicketOut(BaseModel):
     booking_ticket_id: Optional[str] = None
@@ -334,5 +335,37 @@ async def update(db: AsyncSession, update_ticket: BookingUpdate) -> Optional[Boo
     await db.commit()
     await db.refresh(ticket)
 
+
     return ticket
     
+    
+    
+async def delete(booking_ticket_ids : List[str], db: AsyncSession) -> Optional[BookingTicket]:
+    try :
+        result = await db.execute(select(BookingTicket).where(BookingTicket.booking_ticket_id.in_(booking_ticket_ids)))
+        tickets = result.unique().scalars().all()
+        
+        if not tickets:
+            raise HTTPException(status_code= 404, detail= "Tickets not exist")
+        
+        for ticket in tickets:
+            
+            stat = await db.execute(select(TicketClassStatistics)
+                                    .where(
+                                        TicketClassStatistics.flight_id == ticket.flight_id,
+                                        TicketClassStatistics.ticket_class_id == ticket.ticket_class_id
+                                    ))
+            
+            stat_ = stat.scalar_one_or_none()
+            if stat_:
+                stat_.available_seats += 1
+                stat_.booked_seats -= 1
+            await db.delete(ticket)
+            
+        await db.commit()
+        
+        return "Delete Successfully"
+    
+    except SQLAlchemyError as e:
+        await db.rollback()
+        return f"Delete Failed: {str(e)}"
