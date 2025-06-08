@@ -15,7 +15,14 @@ async def get_all_tickets(skip: int = 0, limit: int = 100, db: AsyncSession = De
     try:
         tickets = await get_all(db, skip, limit)
         result = []
-        for ticket in tickets:
+        for ticket in tickets:        
+            ticket_class = ticket.ticket_class
+            ticket_price = next(
+                (price.price for price in ticket_class.ticket_prices
+                    if price.flight_route_id == ticket.flight.flight_route_id),
+                None
+            ) 
+        
             departure_date = ticket.flight.flight_date
             stat = BookingTicketOut(
                 booking_ticket_id = ticket.booking_ticket_id,
@@ -43,7 +50,7 @@ async def get_all_tickets(skip: int = 0, limit: int = 100, db: AsyncSession = De
 
                 ticket_class_id = ticket.ticket_class.ticket_class_id,
                 ticket_class_name = ticket.ticket_class.ticket_class_name,
-                ticket_price = ticket.ticket_class.ticket_prices[0].price,
+                ticket_price = ticket_price,
                 ticket_status = ticket.ticket_status,
                 booking_date = datetime.now().date(),
                 employee_id = ticket.employee.employee_id
