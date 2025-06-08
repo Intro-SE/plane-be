@@ -1,6 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.BookingTicket import BookingTicket
-from app.functions.booking_management import get_all,delete ,BookingTicketOut, BookingCreate, create, TicketSearch, search_by_filters, update, BookingUpdate
+from app.functions.booking_management import (
+    get_all,delete ,BookingTicketOut, BookingCreate, 
+    create, TicketSearch, search_by_filters, 
+    update, BookingUpdate, export
+)
 from typing import Optional, List
 from datetime import timedelta, date, time, datetime
 from fastapi import APIRouter, HTTPException, status, Depends
@@ -209,3 +213,8 @@ async def update_ticket(update_ticket: BookingUpdate, db: AsyncSession = Depends
 async def delete_tickets(booking_ticket_ids: List[str], db: AsyncSession = Depends(get_db)):
     message = await delete(booking_ticket_ids, db)
     return {"log": message}
+
+@router.patch("/export")
+async def export_tickets(booking_ticket_ids: List[str], db: AsyncSession = Depends(get_db)):
+    message = await export(booking_ticket_ids, db)
+    return {"log" : message}

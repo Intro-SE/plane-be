@@ -340,7 +340,7 @@ async def update(db: AsyncSession, update_ticket: BookingUpdate) -> Optional[Boo
     
     
     
-async def delete(booking_ticket_ids : List[str], db: AsyncSession) -> Optional[BookingTicket]:
+async def delete(booking_ticket_ids : List[str], db: AsyncSession) -> str:
     try :
         result = await db.execute(select(BookingTicket).where(BookingTicket.booking_ticket_id.in_(booking_ticket_ids)))
         tickets = result.unique().scalars().all()
@@ -369,3 +369,23 @@ async def delete(booking_ticket_ids : List[str], db: AsyncSession) -> Optional[B
     except SQLAlchemyError as e:
         await db.rollback()
         return f"Delete Failed: {str(e)}"
+    
+    
+async def export(booking_ticket_ids : List[str], db: AsyncSession) -> str:
+    try :
+        result = await db.execute(select(BookingTicket).where(BookingTicket.booking_ticket_id.in_(booking_ticket_ids)))
+        tickets = result.unique().scalars().all()
+        
+        if not tickets:
+            raise HTTPException(status_code= 404, detail= "Tickets not exist")
+        
+        for ticket in tickets:   
+            ticket.ticket_status = True
+            
+        await db.commit()
+        
+        return "Export Successfully"
+
+    except SQLAlchemyError as e:
+        await db.rollback()
+        return f"Export Failed: {str(e)}"
