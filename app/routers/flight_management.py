@@ -10,6 +10,9 @@ from datetime import datetime, timedelta
 from app.functions.flight_lookup import FlightSearch
 from pydantic import BaseModel
 from app.crud.ticket_class import get_ticket_class
+from sqlalchemy import select
+from app.models.Flight import Flight
+
 
 router = APIRouter()
     
@@ -185,13 +188,26 @@ class TicketClassOut(BaseModel):
 @router.get("/ticketclass", response_model=List[TicketClassOut])
 async def get_all_ticket_class(flight_id: str,skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
     try:
+        flight_result = await db.execute(
+            select(Flight).where(Flight.flight_id == flight_id)
+        )
+        flight = flight_result.scalar_one_or_none()
+        if not flight:
+            raise HTTPException(status_code=404, detail="Flight not found")
+
+        route_id = flight.flight_route_id
+        
         tickets = await get_ticket_class(db, flight_id, skip, limit)
 
         result = []
         
         for ticket in tickets:
             ticket_class = ticket.ticket_class
-            ticket_price = ticket_class.ticket_prices[0].price if ticket_class.ticket_prices else None    
+            ticket_price = next(
+                (price.price for price in ticket_class.ticket_prices
+                 if price.flight_route_id == route_id),
+                None
+            ) 
             stat = TicketClassOut(
                 ticket_class_id = ticket.ticket_class_id,
                 ticket_class_name = ticket.ticket_class.ticket_class_name,
