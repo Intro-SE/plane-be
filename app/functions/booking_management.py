@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from pydantic import BaseModel, validator, ValidationError
 from typing import Optional, List
-from app.models.Booking_Ticket import BookingTicket
+from app.models.BookingTicket import BookingTicket
 from datetime import date, time, datetime
 from sqlalchemy.orm import selectinload
 from app.models.Flight import Flight
@@ -12,7 +12,7 @@ from app.crud.booking_ticket import generate_next_id
 from fastapi import HTTPException
 from app.models.TicketClassStatistics import TicketClassStatistics
 from app.models.TicketPrice import TicketPrice
-
+from app.models.Employee import Employee
 from app.models.FlightRoute import FlightRoute
 import re
 
@@ -79,6 +79,7 @@ class BookingCreate(BaseModel):
     
     class Config:
         from_attributes = True
+        
     @validator("national_id")
     def validate_national_id(cls,v):
         if v is None:
@@ -88,6 +89,24 @@ class BookingCreate(BaseModel):
         
         return v
 
+
+class BookingUpdate(BaseModel):
+    flight_id: Optional[str] = None
+    booking_ticket_id: Optional[str] = None
+    passenger_name : Optional[str] = None
+    national_id : Optional[str] = None
+    passenger_gender : Optional[str] = None
+    passenger_phone: Optional[str] = None
+    ticket_class_id : Optional[str] = None
+    ticket_class_name: Optional[str] = None
+    booking_price:  Optional[int] = None
+    
+    employee_id: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+        
+        
 async def get_all(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[BookingTicket]:
     result = await db.execute(select(BookingTicket).where(BookingTicket.ticket_status == False)
                               .options(
@@ -239,8 +258,6 @@ async def create(db: AsyncSession, new_ticket: BookingCreate) -> Optional[Bookin
     if ticket_price is None:
         raise HTTPException(status_code=400, detail="Ticket price not found for route and class")
     
-    print(ticket_price)
-    
     new_ticket.booking_price = ticket_price
     ticket = BookingTicket(
         booking_ticket_id = booking_ticket_id,
@@ -265,4 +282,57 @@ async def create(db: AsyncSession, new_ticket: BookingCreate) -> Optional[Bookin
 
 
 
+async def update(db: AsyncSession, update_ticket: BookingUpdate) -> Optional[BookingTicket]:
+    
+    ticket = await db.execute(select(BookingTicket)
+                              .where(BookingTicket.booking_ticket_id == update_ticket.booking_ticket_id,
+                                     )
+                              .options(
+                                  selectinload(BookingTicket.flight).selectinload(Flight.flight_route),
+                                  selectinload(BookingTicket.ticket_class).selectinload(TicketClass.ticket_prices),
+                                  selectinload(BookingTicket.employee),
+                              ))
+    
+    ticket = ticket.scalar_one_or_none()
 
+    price_result = await db.execute(
+        select(TicketPrice.price).join(TicketPrice.flight_route).join(FlightRoute.flights).where(
+            Flight.flight_id == update_ticket.flight_id,
+            TicketPrice.ticket_class_id == update_ticket.ticket_class_id
+        )
+    )
+    
+
+    ticket_price = price_result.scalar_one_or_none()
+    
+    if ticket_price is None:
+        raise HTTPException(status_code=400, detail="Ticket price not found for route and class")
+    
+    employee = await db.execute(select(Employee.employee_id).join(Employee.booking_tickets).where(BookingTicket.booking_ticket_id == update_ticket.booking_ticket_id))
+
+    employee_id = employee.scalar_one_or_none()
+    if employee_id is None:
+        raise HTTPException(status_code= 400, detail= "Employee id not found")
+    
+    update_ticket.employee_id = employee_id
+    update_ticket.booking_price = ticket_price
+
+    if not ticket:
+        raise HTTPException(status_code= 404, detail= "Ticket not found ")
+    update_ticket.booking_price = ticket.booking_price
+    
+    ticket.flight_id = update_ticket.flight_id
+    ticket.passenger_name = update_ticket.passenger_name
+    ticket.national_id = update_ticket.national_id
+    ticket.gender = update_ticket.passenger_gender
+    ticket.phone_number = update_ticket.passenger_phone
+    ticket.ticket_class_id = update_ticket.ticket_class_id
+    ticket.ticket_class.ticket_class_name = update_ticket.ticket_class_name
+    ticket.booking_price = update_ticket.booking_price
+    
+    ticket.employee_id = update_ticket.employee_id
+    await db.commit()
+    await db.refresh(ticket)
+
+    return ticket
+    

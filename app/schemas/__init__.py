@@ -5,7 +5,7 @@ from .Employee import (
     EmployeeInDB,
 )
 
-from .Booking_Ticket import (
+from .BookingTicket import (
     BookingTicketBase,
     BookingTicketCreate,
     BookingTicketUpdate,

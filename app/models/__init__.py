@@ -1,5 +1,5 @@
 from .Employee import Employee
-from .Booking_Ticket import BookingTicket
+from .BookingTicket import BookingTicket
 
 from .Airport import Airport
 from .Flight import Flight

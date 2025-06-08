@@ -1,7 +1,7 @@
-from app.models.Booking_Ticket import BookingTicket
+from app.models.BookingTicket import BookingTicket
 from app.models.Flight import Flight
 from app.models.FlightRoute import FlightRoute
-from app.schemas.Booking_Ticket import BookingTicketCreate, BookingTicketUpdate
+from app.schemas.BookingTicket import BookingTicketCreate, BookingTicketUpdate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from sqlalchemy.future import select

@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, APIRouter, Depends, status
 from app.crud.booking_ticket import get_all_tickets, create_ticket, get_id,update_ticket, delete_ticket
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.schemas.Booking_Ticket import PassengerInfo, FlightTicketInfo, BookingTicketInDB, BookingTicketCreate, BookingTicketUpdate
+from app.schemas.BookingTicket import PassengerInfo, FlightTicketInfo, BookingTicketInDB, BookingTicketCreate, BookingTicketUpdate
 from typing import List
 from datetime import date, datetime, timedelta
 from app.deps import get_db

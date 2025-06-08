@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.schemas.Booking_Ticket import BookingTicketInDB  
+    from app.schemas.BookingTicket import BookingTicketInDB  
 
 class EmployeeBase(BaseModel):
     employee_id: str
