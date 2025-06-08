@@ -89,7 +89,7 @@ class BookingCreate(BaseModel):
         return v
 
 async def get_all(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[BookingTicket]:
-    result = await db.execute(select(BookingTicket)
+    result = await db.execute(select(BookingTicket).where(BookingTicket.ticket_status == False)
                               .options(
                                   selectinload(BookingTicket.flight).selectinload(Flight.flight_route),
                                   selectinload(BookingTicket.ticket_class).selectinload(TicketClass.ticket_prices),
@@ -102,7 +102,7 @@ async def get_all(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[Boo
 
 async def search_by_filters(db: AsyncSession, filters: TicketSearch,skip: int = 0, limit: int = 100) -> List[BookingTicket]:
     
-    query = (select(BookingTicket).join(BookingTicket.flight).join(BookingTicket.ticket_class)
+    query = (select(BookingTicket).join(BookingTicket.flight).join(BookingTicket.ticket_class).where(BookingTicket.ticket_status == False)
                               .options(
                                   selectinload(BookingTicket.flight).selectinload(Flight.flight_route).selectinload(FlightRoute.departure_airport),
                                   selectinload(BookingTicket.flight).selectinload(Flight.flight_route).selectinload(FlightRoute.arrival_airport),
