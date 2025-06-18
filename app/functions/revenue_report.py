@@ -67,8 +67,7 @@ async def report_by_month(report_input: ReportInput, db: AsyncSession)-> List[Re
         price = (select(func.sum(BookingTicket.booking_price))
                  .where(
                      and_(                     
-                        flight_id = flight.flight_id,
-                        ticket_status = True)
+                        BookingTicket.flight_id == flight.flight_id)
 
                  ))
         

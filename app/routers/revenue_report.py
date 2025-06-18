@@ -14,7 +14,7 @@ router = APIRouter()
 @router.post("/report_month", response_model= List[ReportOutputByMonth])
 async def report_month(input: ReportInput, db: AsyncSession = Depends(get_db)):
     try:
-        result = report_by_month(input, db)
+        result = await report_by_month(input, db)
         return result
     except Exception as e:
-        HTTPException(status_code= 500, detail=str(e))
+        raise HTTPException(status_code= 500, detail=str(e))
