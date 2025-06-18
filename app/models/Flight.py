@@ -2,6 +2,8 @@ from sqlalchemy import Column, String, Date, Time, Integer, ForeignKey
 from sqlalchemy.orm import relationship, joinedload
 from app.models.base import Base
 
+from datetime import datetime
+
 class Flight(Base):
     __tablename__ = "flight"
 
@@ -16,3 +18,13 @@ class Flight(Base):
     flight_route = relationship("FlightRoute", back_populates="flights", lazy="selectin")
     ticket_class_statistics = relationship("TicketClassStatistics", back_populates="flight", lazy="selectin", cascade= "all, delete-orphan")
     booking_tickets = relationship("BookingTicket", back_populates="flight", lazy="selectin", cascade= "all, delete-orphan")
+    
+    
+    @property
+    def is_expired(self) -> bool:
+        now = datetime.now()
+        
+        return (
+            self.flight_date < now.date()
+            or (self.flight_date == now.date() and self.departure_time < now.time())
+        )

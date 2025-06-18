@@ -1,0 +1,20 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.functions.revenue_report import ReportOutputByMonth, report_by_month, ReportInput
+
+from app.deps import get_db
+
+from typing import List
+from fastapi import APIRouter, HTTPException, status, Depends
+
+
+
+router = APIRouter()
+
+
+@router.post("/report_month", response_model= List[ReportOutputByMonth])
+async def report_month(input: ReportInput, db: AsyncSession = Depends(get_db)):
+    try:
+        result = report_by_month(input, db)
+        return result
+    except Exception as e:
+        HTTPException(status_code= 500, detail=str(e))
