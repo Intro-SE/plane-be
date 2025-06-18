@@ -131,7 +131,7 @@ async def report_by_year(report_input: ReportInput, db: AsyncSession) -> List[Re
             
             
         reports.append(ReportOutputByYear(
-            month= "Tháng" + str(month),
+            month= "Tháng " + str(month),
             total_flight= total_flight,
             percertain=str(round(total_booked_seats/ total_seats * 100 if total_seats != 0 else 0)) + str("%"),
             revenue = revenue
