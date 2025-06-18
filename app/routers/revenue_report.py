@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.functions.revenue_report import ReportOutputByMonth, report_by_month, ReportInput
+from app.functions.revenue_report import ReportOutputByMonth, report_by_month, ReportInput,ReportOutputByYear, report_by_year
 
 from app.deps import get_db
 
@@ -15,6 +15,16 @@ router = APIRouter()
 async def report_month(input: ReportInput, db: AsyncSession = Depends(get_db)):
     try:
         result = await report_by_month(input, db)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code= 500, detail=str(e))
+    
+    
+    
+@router.post("/report_year", response_model= List[ReportOutputByYear])
+async def report_year(input: ReportInput, db: AsyncSession = Depends(get_db)):
+    try:
+        result = await report_by_year(input, db)
         return result
     except Exception as e:
         raise HTTPException(status_code= 500, detail=str(e))

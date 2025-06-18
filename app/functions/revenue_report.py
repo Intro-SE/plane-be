@@ -17,15 +17,15 @@ class ReportInput(BaseModel):
 class ReportOutputByMonth(BaseModel):
     flight_id: Optional[str] = None
     last_occupied_seats: Optional[int] = None
-    percertain: Optional[float] = None
+    percertain: Optional[str] = None
     revenue: Optional[int] = None
     
     
     
 class ReportOutputByYear(BaseModel):
-    month: Optional[int] = None
+    month: Optional[str] = None
     total_flight : Optional[int] = None
-    percertain: Optional[int] = None
+    percertain: Optional[str] = None
     revenue: Optional[int] = None
     
     
@@ -78,9 +78,64 @@ async def report_by_month(report_input: ReportInput, db: AsyncSession)-> List[Re
         reports.append(ReportOutputByMonth(
             flight_id= flight.flight_id,
             last_occupied_seats= total_booked_seats,
-            percertain= percertain,
+            percertain= str(round(percertain * 100,2)) + "%",
             revenue= revenue
         ))
+        
+        
+    return reports
+
+
+
+
+async def report_by_year(report_input: ReportInput, db: AsyncSession) -> List[ReportOutputByYear]:
+    year = report_input.report_year
+    
+    
+    reports = []
+    
+    for month in range(1, 13):
+        
+        query = (
+            select(Flight)
+            .options(selectinload(Flight.ticket_class_statistics))
+            .where(
+                and_(
+                    func.extract("month", Flight.flight_date) == month,
+                    func.extract("year", Flight.flight_date) == year
+                )
+            )
+        )
+        
+        flights = await db.execute(query)
+        
+        flights = flights.scalars().all()
+        
+        total_flight = len(flights)
+        total_seats = 0
+        revenue = 0
+        total_booked_seats = 0
+        for flight in flights:
+            total_seats += flight.flight_seat_count
+            total_booked_seats += sum(stat.booked_seats for stat in flight.ticket_class_statistics)
+            query = (select(func.sum(BookingTicket.booking_price))
+                     .where(
+                         BookingTicket.flight_id == flight.flight_id
+                     ))
+            
+            result = await db.execute(query)
+            
+            prices = result.scalar() or 0
+            
+            revenue += prices
+            
+            
+        reports.append(ReportOutputByYear(
+            month= "Tháng" + str(month),
+            total_flight= total_flight,
+            percertain=str(round(total_booked_seats/ total_seats * 100 if total_seats != 0 else 0)) + str("%"),
+            revenue = revenue
+        ))  
         
         
     return reports
