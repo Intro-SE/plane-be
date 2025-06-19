@@ -59,8 +59,8 @@ class FlightRouteUpdate(BaseModel):
 class FlightRouteInDB(FlightRouteBase):
     departure_airport: AirportRef
     arrival_airport: AirportRef
-    flights: List[FlightRef] = []
-    flight_details: List[FlightDetailRef] = []
+    # flights: List[FlightRef] = []
+    # flight_details: List[FlightDetailRef] = []
 
     @property
     def total_flights(self) -> int:
