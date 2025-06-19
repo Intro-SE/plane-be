@@ -19,7 +19,7 @@ from app.functions.booking_management import TicketSearch
 
         
         
-async def get_all(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[BookingTicket]:
+async def get_all(db: AsyncSession, skip: int = 0, limit: int = 1000) -> List[BookingTicket]:
     result = await db.execute(select(BookingTicket).where(BookingTicket.ticket_status == True)
                               .options(
                                   selectinload(BookingTicket.flight).selectinload(Flight.flight_route),
@@ -31,7 +31,7 @@ async def get_all(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[Boo
 
 
 
-async def search_by_filters(db: AsyncSession, filters: TicketSearch,skip: int = 0, limit: int = 100) -> List[BookingTicket]:
+async def search_by_filters(db: AsyncSession, filters: TicketSearch,skip: int = 0, limit: int = 1000) -> List[BookingTicket]:
     
     query = (select(BookingTicket).join(BookingTicket.flight).join(BookingTicket.ticket_class).where(BookingTicket.ticket_status == True)
                               .options(

@@ -10,7 +10,7 @@ from app.deps import get_db
 router = APIRouter()
 
 @router.get("/", response_model=List[BookingTicketInDB])
-async def read_all_tickets(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+async def read_all_tickets(skip: int = 0, limit: int = 1000, db: AsyncSession = Depends(get_db)):
     try:
         tickets = await get_all_tickets(db, skip, limit)
         return tickets

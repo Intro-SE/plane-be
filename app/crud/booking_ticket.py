@@ -11,7 +11,7 @@ from sqlalchemy import func
 import re
 from typing import Optional
 
-async def get_all_tickets(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[BookingTicket]:
+async def get_all_tickets(db: AsyncSession, skip: int = 0, limit: int = 1000) -> List[BookingTicket]:
     result = await db.execute(
         select(BookingTicket)
         .options(

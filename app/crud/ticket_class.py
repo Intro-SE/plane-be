@@ -10,7 +10,7 @@ from typing import Optional, List
 
 
 
-async def get_ticket_class(db: AsyncSession,flight_id: str, skip: int = 0, limit: int = 100) -> List[TicketClassStatistics]:
+async def get_ticket_class(db: AsyncSession,flight_id: str, skip: int = 0, limit: int = 1000) -> List[TicketClassStatistics]:
     result = await db.execute(select(TicketClassStatistics)
                             .options( selectinload(TicketClassStatistics.ticket_class),
                                      selectinload(TicketClassStatistics.ticket_class).selectinload(TicketClass.ticket_prices),)

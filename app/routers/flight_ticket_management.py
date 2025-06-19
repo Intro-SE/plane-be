@@ -11,7 +11,7 @@ router = APIRouter()
 
 
 @router.get("/tickets", response_model=List[BookingTicketOut])
-async def get_all_tickets(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+async def get_all_tickets(skip: int = 0, limit: int = 1000, db: AsyncSession = Depends(get_db)):
     try:
         tickets = await get_all(db,  skip, limit)
         
@@ -68,7 +68,7 @@ async def get_all_tickets(skip: int = 0, limit: int = 100, db: AsyncSession = De
 
     
 @router.post("/search_by_filters", response_model= List[BookingTicketOut])    
-async def search_ticket_by_filters(filters: TicketSearch, skip: int = 0, limit: int = 100 ,db: AsyncSession = Depends(get_db)):
+async def search_ticket_by_filters(filters: TicketSearch, skip: int = 0, limit: int = 1000 ,db: AsyncSession = Depends(get_db)):
     try:
         tickets = await search_by_filters(db, filters, skip, limit)
         

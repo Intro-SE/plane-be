@@ -15,7 +15,7 @@ router = APIRouter()
 
 
 @router.get("/", response_model=List[FlightOut])
-async def get_all(skip: int = 0, limit: int = 100, db : AsyncSession = Depends(get_db)):
+async def get_all(skip: int = 0, limit: int = 1000, db : AsyncSession = Depends(get_db)):
     try:
         flights = await get_all_flights(db, skip, limit)
         result = []      
@@ -69,7 +69,7 @@ async def get_all(skip: int = 0, limit: int = 100, db : AsyncSession = Depends(g
     
     
 @router.post("/search", response_model=List[FlightOut])
-async def search_flights(filters: FlightSearch, skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+async def search_flights(filters: FlightSearch, skip: int = 0, limit: int = 1000, db: AsyncSession = Depends(get_db)):
     try:
         flights = await find_flights_by_filter(db, filters, skip, limit)
         result = []      

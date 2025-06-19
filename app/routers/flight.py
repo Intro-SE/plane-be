@@ -13,7 +13,7 @@ from app.models.FlightRoute import FlightRoute
 router = APIRouter()
 
 @router.get("/", response_model=List[FlightInDB])
-async def get_all_flights(skip:int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+async def get_all_flights(skip:int = 0, limit: int = 1000, db: AsyncSession = Depends(get_db)):
     try:
         flights = await get_all_flight(db, skip, limit)
         result = []

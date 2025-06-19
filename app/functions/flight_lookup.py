@@ -30,7 +30,7 @@ class FlightSearch(BaseModel):
 
 
     
-async def get_all_flights(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[Flight]:
+async def get_all_flights(db: AsyncSession, skip: int = 0, limit: int = 1000) -> List[Flight]:
     result = await db.execute(select(Flight)
                               .options(
                                 selectinload(Flight.flight_route)
@@ -51,7 +51,7 @@ async def get_all_flights(db: AsyncSession, skip: int = 0, limit: int = 100) -> 
 
 
 
-async def find_flights_by_filter(db: AsyncSession,filters: FlightSearch, skip: int = 0, limit: int = 100) -> List[Flight]:
+async def find_flights_by_filter(db: AsyncSession,filters: FlightSearch, skip: int = 0, limit: int = 1000) -> List[Flight]:
     conditions = []
     
     if filters.departure_address:

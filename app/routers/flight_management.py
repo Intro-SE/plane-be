@@ -17,7 +17,7 @@ from app.models.Flight import Flight
 router = APIRouter()
     
 @router.post("/search", response_model=List[FlightOut])
-async def search_flights(filters: FlightSearch, skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+async def search_flights(filters: FlightSearch, skip: int = 0, limit: int = 1000, db: AsyncSession = Depends(get_db)):
     try:
         flights = await find_flights_by_filter(db, filters, skip, limit)
         result = []      
@@ -186,7 +186,7 @@ class TicketClassOut(BaseModel):
 
     
 @router.get("/ticketclass", response_model=List[TicketClassOut])
-async def get_all_ticket_class(flight_id: str,skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+async def get_all_ticket_class(flight_id: str,skip: int = 0, limit: int = 1000, db: AsyncSession = Depends(get_db)):
     try:
         flight_result = await db.execute(
             select(Flight).where(Flight.flight_id == flight_id)

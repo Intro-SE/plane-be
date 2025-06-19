@@ -27,7 +27,7 @@ async def get_by_id(db: AsyncSession, employee_id: str) -> Optional[Employee]:
     )
     return result.unique().scalars().one_or_none()
 
-async def get_all(db: AsyncSession, skip: int = 0, limit: int = 100)-> List[Employee]:
+async def get_all(db: AsyncSession, skip: int = 0, limit: int = 1000)-> List[Employee]:
     result = await db.execute(select(Employee)
                             .options(selectinload(Employee.booking_tickets))
                             .offset(skip).limit(limit))

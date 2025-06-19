@@ -9,7 +9,7 @@ router = APIRouter()
 
 
 @router.get("/", response_model=List[AirportInDB])
-async def get_all(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+async def get_all(skip: int = 0, limit: int = 1000, db: AsyncSession = Depends(get_db)):
     try:
         result = await get_all_airports(db, skip, limit)
         return result

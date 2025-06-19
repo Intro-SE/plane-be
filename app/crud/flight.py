@@ -21,7 +21,7 @@ async def get_id(db: AsyncSession, flight_id: str) -> Optional[Flight]:
                               .where(Flight.flight_id == flight_id))
     return result.unique().scalars().one_or_none()
 
-async def get_all_flight(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[Flight]:
+async def get_all_flight(db: AsyncSession, skip: int = 0, limit: int = 1000) -> List[Flight]:
     result = await db.execute( select(Flight)
     .options(
         selectinload(Flight.flight_route)

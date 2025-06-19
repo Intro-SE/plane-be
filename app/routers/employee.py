@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 @router.get("/", response_model= List[EmployeeInDB])
-async def get_all_accounts(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+async def get_all_accounts(skip: int = 0, limit: int = 1000, db: AsyncSession = Depends(get_db)):
     try:
         result = await get_all(db, skip=skip, limit=limit)
         return result

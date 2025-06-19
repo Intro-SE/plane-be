@@ -55,7 +55,7 @@ class FlightCreate(BaseModel):
             raise ValueError("Not enough total seats")
         return v
 
-async def find_flights_by_filter(db: AsyncSession,filters: FlightSearch, skip: int = 0, limit: int = 100) -> List[Flight]:
+async def find_flights_by_filter(db: AsyncSession,filters: FlightSearch, skip: int = 0, limit: int = 1000) -> List[Flight]:
     conditions = []
     
     

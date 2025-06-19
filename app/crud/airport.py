@@ -6,7 +6,7 @@ import re
 from typing import Optional, List
 from app.models.Rules import Rules
 
-async def get_all_airports(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[Airport]:
+async def get_all_airports(db: AsyncSession, skip: int = 0, limit: int = 1000) -> List[Airport]:
     result = await db.execute(select(Airport).offset(skip).limit(limit))
     
     return result.scalars().all()
