@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 import re
 from typing import Optional, List
+from app.models.Rules import Rules
 
 async def get_all_airports(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[Airport]:
     result = await db.execute(select(Airport).offset(skip).limit(limit))
@@ -30,15 +31,26 @@ async def get_id(db: AsyncSession, airport_id: str) -> Optional[Airport]:
     
 async def create_airport(db: AsyncSession, airport: AirportCreate) -> Airport:
     airport_id = await generate_airport_id(db)
-    new_airport = Airport(
-        airport_id = airport_id,
-        airport_name = airport.airport_name,
-        airport_address = airport.airport_address
-    )
-    db.add(new_airport)
-    await db.commit()
-    await db.refresh(new_airport)
-    return new_airport
+    
+    rules = await db.execute(select(Rules))
+    
+    rules = rules.scalar()
+    
+    airports = await db.execute(select(func.count(Airport.airport_id)))
+    
+    
+    if airports.scalar() < rules.max_airports:
+        new_airport = Airport(
+            airport_id=airport_id,
+            airport_name=airport.airport_name,
+            airport_address=airport.airport_address
+        )
+        db.add(new_airport)
+        await db.commit()
+        await db.refresh(new_airport)
+        return new_airport
+    else:
+        raise ValueError("Number of airports exceeds regulations")
 
 
 async def update_airport(db: AsyncSession, db_airport: Airport, airport: AirportUpdate) -> Airport:
