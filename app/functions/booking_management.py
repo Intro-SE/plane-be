@@ -46,6 +46,7 @@ class BookingTicketOut(BaseModel):
     ticket_status:Optional[bool] = None
     booking_date: Optional[date] = None
     employee_id: Optional[str] = None
+    employee_name: Optional[str] = None
     
     
     

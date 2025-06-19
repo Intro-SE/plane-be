@@ -58,7 +58,8 @@ async def get_all_tickets(skip: int = 0, limit: int = 100, db: AsyncSession = De
                 ticket_price = ticket_price,
                 ticket_status = ticket.ticket_status,
                 booking_date = datetime.now().date(),
-                employee_id = ticket.employee.employee_id
+                employee_id = ticket.employee.employee_id,
+                employee_name= ticket.employee.employee_name
             )
             result.append(stat) 
             
@@ -113,7 +114,8 @@ async def search_ticket_by_filters(filters: TicketSearch, skip: int = 0, limit: 
                 ticket_price = ticket_price,
                 ticket_status = ticket.ticket_status,
                 booking_date = datetime.now().date(),
-                employee_id = ticket.employee.employee_id
+                employee_id = ticket.employee.employee_id,
+                employee_name= ticket.employee.employee_name
             )
             result.append(stat) 
             
@@ -159,7 +161,8 @@ async def create_ticket(new_ticket: BookingCreate, db: AsyncSession = Depends(ge
             ticket_price = ticket.booking_price,
             ticket_status = ticket.ticket_status,
             booking_date = datetime.now().date(),
-            employee_id = ticket.employee.employee_id
+            employee_id = ticket.employee.employee_id,
+            employee_name= ticket.employee.employee_name
         )
         return ticket_
     except Exception as e:
@@ -203,7 +206,8 @@ async def update_ticket(update_ticket: BookingUpdate, db: AsyncSession = Depends
             ticket_price = ticket.booking_price,
             ticket_status = ticket.ticket_status,
             booking_date = datetime.now().date(),
-            employee_id = ticket.employee.employee_id
+            employee_id = ticket.employee.employee_id,
+            employee_name= ticket.employee.employee_name
         )
         return ticket_
         
