@@ -43,7 +43,7 @@ async def generate_flightroute_id(session):
             max_num = max(max_num, num)
 
     next_num = max_num + 1
-    return f"TB{next_num:03d}" 
+    return f"TB{next_num:02d}" 
 
 
 async def create_flightroute(db : AsyncSession, flightrouter: FlightRouteCreate) -> FlightRoute:

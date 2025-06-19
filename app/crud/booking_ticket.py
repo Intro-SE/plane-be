@@ -47,7 +47,7 @@ async def generate_next_id(session):
             max_num = max(max_num, num)
 
     next_num = max_num + 1
-    return f"PDC{next_num:03d}" 
+    return f"PDC{next_num:04d}" 
     
 async def create_ticket(db: AsyncSession, ticket: BookingTicketCreate) -> BookingTicket:
     booking_ticket_id = await generate_next_id(db)

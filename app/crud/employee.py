@@ -49,7 +49,7 @@ async def generate_next_id(session):
             max_num = max(max_num, num)
 
     next_num = max_num + 1
-    return f"NV{next_num:03d}" 
+    return f"NV{next_num:02d}" 
     
 async def create(db: AsyncSession, obj_in: EmployeeCreate) -> Employee:
     new_id = await generate_next_id(db)  
