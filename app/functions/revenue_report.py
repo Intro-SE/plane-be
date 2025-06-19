@@ -9,6 +9,9 @@ from sqlalchemy.orm import selectinload
 from app.models.TicketClassStatistics import TicketClassStatistics
 from app.models.FlightDetail import FlightDetail
 import re
+from app.models.Rules import Rules
+from app.crud.airport import get_airport_name
+from fastapi import HTTPException
 
 
 class ReportInput(BaseModel):
@@ -166,10 +169,8 @@ async def get_transit_airport(db: AsyncSession) -> List[FlightTransitOut]:
     return result
 
 
-
-
 async def generate_next_id(session):
-    result = await session.execute(select(BookingTicket.booking_ticket_id))
+    result = await session.execute(select(FlightDetail.flight_detail_id))
     ids = [row[0] for row in result.all()]
 
     max_num = 0
@@ -181,3 +182,68 @@ async def generate_next_id(session):
 
     next_num = max_num + 1
     return f"CTCB{next_num:03d}" 
+
+
+async def create_transit(input: FlightTransitOut, db: AsyncSession) -> Optional[FlightTransitOut]:
+    rules = await db.execute(select(Rules))
+    
+    rules = rules.scalar()
+    
+    count_ = await db.execute(select(func.count(FlightDetail.flight_detail_id)).where(FlightDetail.flight_route_id == input.flight_route_id))
+    
+    count_ = count_.scalar()
+    flight_detail_id = await generate_next_id(db)
+    
+    transit_airport = await get_airport_name(db,input.transit_airport_name)
+    if transit_airport is None:
+        raise HTTPException(status_code=404, detail=f"Airport '{input.transit_airport_name}' not exists")
+
+    if count_ < rules.max_transit_airports:
+        new_transit = FlightDetail(
+            flight_detail_id = flight_detail_id,
+            flight_route_id = input.flight_route_id,
+            transit_airport_id = transit_airport.airport_id,
+            stop_time = input.stop_time,
+            note = input.note
+        )
+        
+        db.add(new_transit)
+        await db.commit()
+        await db.refresh(new_transit)
+
+        return FlightTransitOut(
+            flight_route_id=new_transit.flight_route_id,
+            transit_airport_name=input.transit_airport_name,
+            stop_time=new_transit.stop_time,
+            note=new_transit.note
+        )
+    else :
+        raise HTTPException(status_code=400, detail= "Number of transit airports exceeds regulations")
+    
+    
+    
+    
+class DeleteDetail(BaseModel):
+    flight_route_id: Optional[str] = None
+    transit_airport_name: Optional[str] = None
+    
+    
+async def delete_transit(input: DeleteDetail, db: AsyncSession) -> str:
+    
+    transit = await db.execute(select(FlightDetail).options(selectinload(FlightDetail.transit_airport)).where(and_(
+        FlightDetail.flight_route_id == input.flight_route_id,
+        FlightDetail.transit_airport.has(airport_name=input.transit_airport_name)
+    )))
+    
+    transit_airport = transit.scalar()
+    if not transit_airport:
+        raise HTTPException(status_code=404, detail="Transit airport not found")
+
+    await db.delete(transit_airport)
+    await db.commit()
+    return "Deleted successfully"
+
+
+
+    
+    

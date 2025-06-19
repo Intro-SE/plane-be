@@ -28,7 +28,12 @@ async def get_id(db: AsyncSession, airport_id: str) -> Optional[Airport]:
     result = await db.execute(select(Airport).where(Airport.airport_id == airport_id))
     return result.unique().scalars().one_or_none()
 
-    
+
+async def get_airport_name(db: AsyncSession, airport_name: str) -> Optional[Airport]:
+    result = await db.execute(select(Airport).where(Airport.airport_name == airport_name))
+    return result.scalar()
+
+
 async def create_airport(db: AsyncSession, airport: AirportCreate) -> Airport:
     airport_id = await generate_airport_id(db)
     
