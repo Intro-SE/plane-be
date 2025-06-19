@@ -7,6 +7,8 @@ from typing import Optional,List
 from sqlalchemy import func, select, join,and_, or_
 from sqlalchemy.orm import selectinload
 from app.models.TicketClassStatistics import TicketClassStatistics
+from app.models.FlightDetail import FlightDetail
+import re
 
 
 class ReportInput(BaseModel):
@@ -29,6 +31,11 @@ class ReportOutputByYear(BaseModel):
     revenue: Optional[int] = None
     
     
+class FlightTransitOut(BaseModel):
+    flight_route_id: Optional[str] = None
+    transit_airport_name:Optional[str] = None
+    stop_time: Optional[int] = None
+    note: Optional[str] = None
     
 async def report_by_month(report_input: ReportInput, db: AsyncSession)-> List[ReportOutputByMonth]:
     month = report_input.report_month
@@ -139,3 +146,38 @@ async def report_by_year(report_input: ReportInput, db: AsyncSession) -> List[Re
         
         
     return reports
+
+
+
+async def get_transit_airport(db: AsyncSession) -> List[FlightTransitOut]:
+    
+    flight_detail = await db.execute(select(FlightDetail).options(selectinload(FlightDetail.transit_airport)))
+    
+    flight_details = flight_detail.scalars().all()
+    result = []
+    for fl in flight_details:
+        result.append(FlightTransitOut(
+            flight_route_id= fl.flight_route_id,
+            transit_airport_name= fl.transit_airport.airport_name,
+            stop_time= fl.stop_time,
+            note= fl.note
+        ))
+    
+    return result
+
+
+
+
+async def generate_next_id(session):
+    result = await session.execute(select(BookingTicket.booking_ticket_id))
+    ids = [row[0] for row in result.all()]
+
+    max_num = 0
+    for bid in ids:
+        match = re.search(r'CTCB(\d+)', bid)
+        if match:
+            num = int(match.group(1))
+            max_num = max(max_num, num)
+
+    next_num = max_num + 1
+    return f"CTCB{next_num:03d}" 
