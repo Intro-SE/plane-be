@@ -35,21 +35,21 @@ async def get_all(db: AsyncSession, skip: int = 0, limit: int = 100)-> List[Empl
 
 
 
-async def generate_next_id(session):
-    result = await session.execute(
-        select(func.max(Employee.employee_id))
-    )
-    max_id = result.scalar()
 
-    if not max_id:
-        return "NV001"
-    
-    match = re.search(r'NV(\d+)', max_id)
-    if match:
-        next_num = int(match.group(1)) + 1
-        return f"NV{next_num:02d}" 
-    else:
-        raise ValueError("Mã nhân viên hiện tại không đúng định dạng 'NVxxx'")
+
+async def generate_next_id(session):
+    result = await session.execute(select(Employee.employee_id))
+    ids = [row[0] for row in result.all()]
+
+    max_num = 0
+    for bid in ids:
+        match = re.search(r'NV(\d+)', bid)
+        if match:
+            num = int(match.group(1))
+            max_num = max(max_num, num)
+
+    next_num = max_num + 1
+    return f"NV{next_num:03d}" 
     
 async def create(db: AsyncSession, obj_in: EmployeeCreate) -> Employee:
     new_id = await generate_next_id(db)  

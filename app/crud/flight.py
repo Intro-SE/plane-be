@@ -36,21 +36,22 @@ async def get_all_flight(db: AsyncSession, skip: int = 0, limit: int = 100) -> L
     return result.unique().scalars().all()
 
 
+    
+
 async def generate_next_id(session):
-    result = await session.execute(
-        select(func.max(Flight.flight_id))
-    )
-    max_id = result.scalar()
+    result = await session.execute(select(Flight.flight_id))
+    ids = [row[0] for row in result.all()]
 
-    if not max_id:
-        return "CB01"
-    
-    match = re.search(r'CB(\d+)', max_id)
-    if match:
-        next_num = int(match.group(1)) + 1
-        return f"CB{next_num:02d}" 
+    max_num = 0
+    for bid in ids:
+        match = re.search(r'CB(\d+)', bid)
+        if match:
+            num = int(match.group(1))
+            max_num = max(max_num, num)
 
-    
+    next_num = max_num + 1
+    return f"CB{next_num:03d}" 
+
 async def create_flight(db: AsyncSession, flight: FlightCreate) -> Flight:    
     
     new_flight = Flight(

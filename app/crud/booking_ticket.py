@@ -36,19 +36,18 @@ async def get_id(db: AsyncSession, booking_ticket_id: str) -> Optional[BookingTi
 
 
 async def generate_next_id(session):
-    result = await session.execute(
-        select(func.max(BookingTicket.booking_ticket_id))
-    )
-    max_id = result.scalar()
+    result = await session.execute(select(BookingTicket.booking_ticket_id))
+    ids = [row[0] for row in result.all()]
 
-    if not max_id:
-        return "PDC01"
-    
-    match = re.search(r'PDC(\d+)', max_id)
-    if match:
-        next_num = int(match.group(1)) + 1
-        return f"PDC{next_num:02d}" 
+    max_num = 0
+    for bid in ids:
+        match = re.search(r'PDC(\d+)', bid)
+        if match:
+            num = int(match.group(1))
+            max_num = max(max_num, num)
 
+    next_num = max_num + 1
+    return f"PDC{next_num:03d}" 
     
 async def create_ticket(db: AsyncSession, ticket: BookingTicketCreate) -> BookingTicket:
     booking_ticket_id = await generate_next_id(db)

@@ -16,19 +16,21 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 import re
 
-async def generate_next_id(session):
-    result = await session.execute(
-        select(func.max(TicketClassStatistics.ticket_class_statistics_id))
-    )
-    max_id = result.scalar()
 
-    if not max_id:
-        return "TK01"
     
-    match = re.search(r'TK(\d+)', max_id)
-    if match:
-        next_num = int(match.group(1)) + 1
-        return f"TK{next_num:02d}" 
+async def generate_next_id(session):
+    result = await session.execute(select(TicketClassStatistics.ticket_class_statistics_id))
+    ids = [row[0] for row in result.all()]
+
+    max_num = 0
+    for bid in ids:
+        match = re.search(r'TK(\d+)', bid)
+        if match:
+            num = int(match.group(1))
+            max_num = max(max_num, num)
+
+    next_num = max_num + 1
+    return f"TK{next_num:03d}" 
 
 class FlightCreate(BaseModel):
     flight_id : Optional[str] = None

@@ -29,19 +29,21 @@ async def get_all_flightroutes(db: AsyncSession, skip : int = 0, limit : int = 0
     
     return result.scalars().all()
 
-async def generate_flightroute_id(session):
-    result = await session.execute(
-        select(func.max(FlightRoute.flight_route_id))
-    )
-    max_id = result.scalar()
 
-    if not max_id:
-        return "TB01"
-    
-    match = re.search(r'TB(\d+)', max_id)
-    if match:
-        next_num = int(match.group(1)) + 1
-        return f"TB{next_num:02d}" 
+
+async def generate_flightroute_id(session):
+    result = await session.execute(select(FlightRoute.flight_route_id))
+    ids = [row[0] for row in result.all()]
+
+    max_num = 0
+    for bid in ids:
+        match = re.search(r'TB(\d+)', bid)
+        if match:
+            num = int(match.group(1))
+            max_num = max(max_num, num)
+
+    next_num = max_num + 1
+    return f"TB{next_num:03d}" 
 
 
 async def create_flightroute(db : AsyncSession, flightrouter: FlightRouteCreate) -> FlightRoute:
