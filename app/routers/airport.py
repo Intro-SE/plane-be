@@ -29,8 +29,8 @@ async def create_new_airport(airport: AirportCreate, db: AsyncSession = Depends(
     
     
 @router.put("/", response_model=AirportInDB, status_code= status.HTTP_202_ACCEPTED)
-async def update_info(booking_airport_id: str, obj_in : AirportUpdate,db: AsyncSession = Depends(get_db)):
-    db_obj = await get_id(db, booking_airport_id)
+async def update_info(airport_id: str, obj_in : AirportUpdate,db: AsyncSession = Depends(get_db)):
+    db_obj = await get_id(db, airport_id)
     
     if not db_obj:
         raise HTTPException(status_code= 404, detail= "Airport not found")
@@ -38,8 +38,8 @@ async def update_info(booking_airport_id: str, obj_in : AirportUpdate,db: AsyncS
     return await update_airport(db, db_obj, obj_in)
 
 @router.delete("/", response_model=AirportInDB, status_code= status.HTTP_202_ACCEPTED)
-async def delete_info(booking_airport_id: str,db: AsyncSession = Depends(get_db)):
-    db_obj = await get_id(db ,booking_airport_id)
+async def delete_info(airport_id: str,db: AsyncSession = Depends(get_db)):
+    db_obj = await get_id(db ,airport_id)
     
     if not db_obj:
         raise HTTPException(status_code= 404, detail= "Airport not found")

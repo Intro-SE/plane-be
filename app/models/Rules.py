@@ -5,8 +5,7 @@ from app.models.base import Base
 class Rules(Base):
     __tablename__ = "rules"
     
-    
-    max_airports = Column(Integer, default=10)
+    max_airports = Column(Integer,primary_key=True, default=10)
     max_transit_airports = Column(Integer, default=2)
     min_flight_time = Column(Integer, default=30)
     min_stop_time = Column(Integer, default=10)

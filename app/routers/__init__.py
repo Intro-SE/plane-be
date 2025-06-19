@@ -10,7 +10,7 @@ from .flight_management import router as flights_management
 from .booking_management import router as bookings_management
 from .flight_ticket_management import router as flight_tickets_management
 from .revenue_report import router as revenue_reports
-
+from .regulations import router as regulation
 
 api_router = APIRouter()
 
@@ -20,6 +20,7 @@ api_router.include_router(flights_management,prefix= "/flight_management", tags=
 api_router.include_router(bookings_management,prefix= "/booking_management", tags= ["Booking Management"])
 api_router.include_router(flight_tickets_management,prefix= "/flight_ticket_management", tags= ["Flight Ticket Management"])
 api_router.include_router(revenue_reports,prefix= "/revenue_report", tags= ["Revenue Report"])
+api_router.include_router(regulation,prefix= "/regulation", tags= ["Regulation"])
 
 api_router.include_router(employee_router, prefix="/employee_crud", tags=["EmployeeAccount_CRUD"])
 api_router.include_router(flight_router, prefix="/flights_crud", tags=["Flight_CRUD"])
