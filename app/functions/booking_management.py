@@ -3,7 +3,7 @@ from sqlalchemy import select, func, and_
 from pydantic import BaseModel, validator, ValidationError
 from typing import Optional, List
 from app.models.BookingTicket import BookingTicket
-from datetime import date, time, datetime
+from datetime import date, time, datetime,timedelta
 from sqlalchemy.orm import selectinload
 from app.models.Flight import Flight
 from app.models.TicketClass import TicketClass
@@ -16,6 +16,8 @@ from app.models.Employee import Employee
 from app.models.FlightRoute import FlightRoute
 import re
 from sqlalchemy.exc import SQLAlchemyError
+from app.models.Rules import Rules
+
 
 class BookingTicketOut(BaseModel):
     booking_ticket_id: Optional[str] = None
@@ -230,59 +232,72 @@ async def create(db: AsyncSession, new_ticket: BookingCreate) -> Optional[Bookin
     
     ticket_ = result.scalars().first()
     
-    if not ticket_:
-        raise HTTPException(status_code=404, detail= "Ticket class not found ")
     
-    if ticket_.available_seats <= 0:
-        raise HTTPException(status_code= 400, detail= "No available seat in flight")
-    if not ticket_.ticket_class.ticket_prices:
-        raise HTTPException(status_code=400, detail="Ticket class has no price info")
-
-    ticket_.available_seats -= 1
-    ticket_.booked_seats += 1
+    rules = await db.execute(select(Rules))
     
-    db.add(ticket_)
-    await db.flush()
+    rules = rules.scalar()
     
-    booking_ticket_id = await generate_next_id(db)
-
-    route_id = flight.flight_route_id
+    now = datetime.now()
+    latest_booking_delta = timedelta(hours=rules.latest_booking_time)
+    flight_datetime = datetime.combine(flight.flight_date, flight.departure_time)
+    booking_deadline = flight_datetime - latest_booking_delta
     
-    price_result = await db.execute(
-        select(TicketPrice.price).where(
-            TicketPrice.flight_route_id == route_id,
-            TicketPrice.ticket_class_id == new_ticket.ticket_class_id
-        )
-    )
-    
-    ticket_price = price_result.scalar_one_or_none()
-    
-    if ticket_price is None:
-        raise HTTPException(status_code=400, detail="Ticket price not found for route and class")
-    
-    new_ticket.booking_price = ticket_price
-    ticket = BookingTicket(
-        booking_ticket_id = booking_ticket_id,
-        flight_id = new_ticket.flight_id,
-        passenger_name = new_ticket.passenger_name,
-        national_id = new_ticket.national_id,
-        gender = new_ticket.passenger_gender,
-        phone_number = new_ticket.passenger_phone,
-        ticket_class_id = new_ticket.ticket_class_id,
-        booking_price = new_ticket.booking_price,
-        booking_date = datetime.now().date(),
-        ticket_status = False,
+    if now < booking_deadline:
         
-        employee_id = new_ticket.employee_id
-    )
+        if not ticket_:
+            raise HTTPException(status_code=404, detail= "Ticket class not found ")
+        
+        if ticket_.available_seats <= 0:
+            raise HTTPException(status_code= 400, detail= "No available seat in flight")
+        if not ticket_.ticket_class.ticket_prices:
+            raise HTTPException(status_code=400, detail="Ticket class has no price info")
 
-    print(ticket.booking_price)
-    db.add(ticket)
-    await db.commit()
-    await db.refresh(ticket)
-    return ticket
+        ticket_.available_seats -= 1
+        ticket_.booked_seats += 1
+        
+        db.add(ticket_)
+        await db.flush()
+        
+        booking_ticket_id = await generate_next_id(db)
 
+        route_id = flight.flight_route_id
+        
+        price_result = await db.execute(
+            select(TicketPrice.price).where(
+                TicketPrice.flight_route_id == route_id,
+                TicketPrice.ticket_class_id == new_ticket.ticket_class_id
+            )
+        )
+        
+        ticket_price = price_result.scalar_one_or_none()
+        
+        if ticket_price is None:
+            raise HTTPException(status_code=400, detail="Ticket price not found for route and class")
+        
+        new_ticket.booking_price = ticket_price
+        ticket = BookingTicket(
+            booking_ticket_id = booking_ticket_id,
+            flight_id = new_ticket.flight_id,
+            passenger_name = new_ticket.passenger_name,
+            national_id = new_ticket.national_id,
+            gender = new_ticket.passenger_gender,
+            phone_number = new_ticket.passenger_phone,
+            ticket_class_id = new_ticket.ticket_class_id,
+            booking_price = new_ticket.booking_price,
+            booking_date = datetime.now().date(),
+            ticket_status = False,
+            
+            employee_id = new_ticket.employee_id
+        )
 
+        print(ticket.booking_price)
+        db.add(ticket)
+        await db.commit()
+        await db.refresh(ticket)
+        return ticket
+
+    else:
+        raise HTTPException(status_code=400, detail="This flight is no longer available for booking")
 
 async def update(db: AsyncSession, update_ticket: BookingUpdate) -> Optional[BookingTicket]:
     
@@ -348,9 +363,32 @@ async def delete(booking_ticket_ids : List[str], db: AsyncSession) -> str:
         
         if not tickets:
             raise HTTPException(status_code= 404, detail= "Tickets not exist")
+        rules_result = await db.execute(select(Rules))
+        
+        rules = rules_result.scalar_one_or_none()
+        if not rules:
+            raise HTTPException(status_code=404, detail="Rules not found")
+
+        now = datetime.now()
+        latest_cancel_delta = timedelta(hours=rules.latest_cancel_time)
         
         for ticket in tickets:
-            
+            flight_result = await db.execute(
+                select(Flight).where(Flight.flight_id == ticket.flight_id)
+            )
+            flight = flight_result.scalar_one_or_none()
+            if not flight:
+                raise HTTPException(status_code=404, detail="Flight not found for ticket")
+
+            flight_datetime = datetime.combine(flight.flight_date, flight.departure_time)
+            cancel_deadline = flight_datetime - latest_cancel_delta
+
+            if now > cancel_deadline:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot cancel ticket {ticket.booking_ticket_id}: past cancellation deadline"
+                )
+                
             stat = await db.execute(select(TicketClassStatistics)
                                     .where(
                                         TicketClassStatistics.flight_id == ticket.flight_id,
@@ -379,8 +417,28 @@ async def export(booking_ticket_ids : List[str], db: AsyncSession) -> str:
         
         if not tickets:
             raise HTTPException(status_code= 404, detail= "Tickets not exist")
-        
+
+        now = datetime.now()
+
         for ticket in tickets:   
+            flight_result = await db.execute(
+                select(Flight).where(Flight.flight_id == ticket.flight_id)
+            )
+            flight = flight_result.scalar_one_or_none()
+            if not flight:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Flight not found for ticket {ticket.booking_ticket_id}"
+                )
+
+            flight_datetime = datetime.combine(flight.flight_date, flight.departure_time)
+
+            if now >= flight_datetime:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot export ticket {ticket.booking_ticket_id}: Flight already departed"
+                )
+
             ticket.ticket_status = True
             
         await db.commit()
