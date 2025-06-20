@@ -15,6 +15,7 @@ from app.functions.flight_lookup import FlightSearch
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 import re
+from app.models.Rules import Rules
 
 
     
@@ -54,6 +55,25 @@ class FlightCreate(BaseModel):
         if 'total_seats' in values and sum(v) != values['total_seats']:
             raise ValueError("Not enough total seats")
         return v
+
+
+async def get_all_flights(db: AsyncSession, skip: int = 0, limit: int = 1000) -> List[Flight]:
+    result = await db.execute(select(Flight)
+                              .options(
+                                selectinload(Flight.flight_route)
+                                .selectinload(FlightRoute.departure_airport),
+                                selectinload(Flight.flight_route)
+                                .selectinload(FlightRoute.arrival_airport),
+                                selectinload(Flight.flight_route)
+                                .selectinload(FlightRoute.flight_details)
+                                .selectinload(FlightDetail.transit_airport),
+                                selectinload(Flight.ticket_class_statistics)
+                                .selectinload(TicketClassStatistics.ticket_class)
+                                .selectinload(TicketClass.ticket_prices),
+                              ).offset(skip).limit(limit))
+    
+    return result.scalars().all()
+
 
 async def find_flights_by_filter(db: AsyncSession,filters: FlightSearch, skip: int = 0, limit: int = 1000) -> List[Flight]:
     conditions = []
@@ -145,7 +165,33 @@ async def create_new_flight(db: AsyncSession, flight : FlightCreate) -> Flight:
     
     if not route:
         raise HTTPException(status_code= 404, detail= "Flight route not found")
-    
+
+
+    rules_result = await db.execute(select(Rules))
+    rules = rules_result.scalar_one_or_none()
+    if not rules:
+        raise HTTPException(status_code=500, detail="Rules not found")
+
+    if flight.flight_duration < rules.min_flight_time:
+        raise HTTPException(status_code=400, detail=f"Flight duration must be at least {rules.min_flight_time} minutes")
+
+    num_stops = len(route.flight_details)
+    if num_stops > rules.max_transit_airports:
+        raise HTTPException(status_code=400, detail=f"Too many transit airports: max is {rules.max_transit_airports}")
+
+    for detail in route.flight_details:
+        if detail.stop_time < rules.min_stop_time or detail.stop_time > rules.max_stop_time:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Stop duration at airport '{detail.transit_airport_id}' must be between {rules.min_stop_time} and {rules.max_stop_time} minutes"
+            )
+
+    if len(flight.seat_type) != rules.ticket_class_count:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Number of ticket classes must be exactly {rules.ticket_class_count}"
+        )
+        
     flight.departure_airport = route.departure_airport.airport_name
     flight.arrival_airport = route.arrival_airport.airport_name
     
