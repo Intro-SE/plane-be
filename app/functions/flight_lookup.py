@@ -9,9 +9,9 @@ from app.models.TicketClassStatistics import TicketClassStatistics
 from app.models.FlightRoute import FlightRoute
 from app.models.TicketClass import TicketClass
 from pydantic import BaseModel
-from datetime import datetime, time, date
+from datetime import datetime, time, date, timedelta
 from sqlalchemy import select, and_, or_
-
+from app.models.Rules import Rules
 
 class FlightSearch(BaseModel):
     flight_id: Optional[str] = None
@@ -31,6 +31,12 @@ class FlightSearch(BaseModel):
 
     
 async def get_all_flights(db: AsyncSession, skip: int = 0, limit: int = 1000) -> List[Flight]:
+    now = datetime.now()
+    rules = await db.execute(select(Rules))
+    rules = rules.scalar()
+    latest_booking_delta = timedelta(hours=rules.latest_time_to_book)
+
+    
     result = await db.execute(select(Flight)
                               .options(
                                 selectinload(Flight.flight_route)
@@ -43,7 +49,14 @@ async def get_all_flights(db: AsyncSession, skip: int = 0, limit: int = 1000) ->
                                 selectinload(Flight.ticket_class_statistics)
                                 .selectinload(TicketClassStatistics.ticket_class)
                                 .selectinload(TicketClass.ticket_prices),
-                              ).offset(skip).limit(limit))
+                              ).where(
+                                  or_(Flight.flight_date > now.date(),
+                                      and_(
+                                        Flight.flight_date == now.date(),
+                                        Flight.departure_time > (now - latest_booking_delta).time()
+                                      ))
+                              )
+                              .offset(skip).limit(limit))
     
     return result.scalars().all()
 
