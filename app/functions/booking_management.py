@@ -344,7 +344,6 @@ async def update(db: AsyncSession, update_ticket: BookingUpdate) -> Optional[Boo
     ticket.gender = update_ticket.passenger_gender
     ticket.phone_number = update_ticket.passenger_phone
     ticket.ticket_class_id = update_ticket.ticket_class_id
-    ticket.ticket_class.ticket_class_name = update_ticket.ticket_class_name
     ticket.booking_price = update_ticket.booking_price
     
     ticket.employee_id = update_ticket.employee_id
