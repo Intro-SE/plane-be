@@ -151,7 +151,7 @@ async def create_transit(input: FlightTransitOut, db: AsyncSession) -> Optional[
     if transit_airport is None:
         raise HTTPException(status_code=404, detail=f"Airport '{input.transit_airport_name}' not exists")
 
-    if count_ < rules.max_transit_airports:
+    if count_ < rules.max_transit_airports and input.stop_time <= rules.max_stop_time and input.stop_time >= rules.min_stop_time:
         new_transit = FlightDetail(
             flight_detail_id = flight_detail_id,
             flight_route_id = input.flight_route_id,
