@@ -186,10 +186,10 @@ async def create_new_flight(db: AsyncSession, flight : FlightCreate) -> Flight:
                 detail=f"Stop duration at airport '{detail.transit_airport_id}' must be between {rules.min_stop_time} and {rules.max_stop_time} minutes"
             )
 
-    if len(flight.seat_type) > rules.ticket_class_count:
+    if len(flight.seat_type) >= rules.ticket_class_count:
         raise HTTPException(
             status_code=400,
-            detail=f"Number of ticket classes must be exactly {rules.ticket_class_count}"
+            detail=f"Number of ticket classes: {rules.ticket_class_count}"
         )
         
     flight.departure_airport = route.departure_airport.airport_name
@@ -258,7 +258,33 @@ async def update_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
     if not exist_flight:
         raise HTTPException(status_code= 404, detail= "Flight not exists")
     
-    
+    route = exist_flight.flight_route
+
+    rules_result = await db.execute(select(Rules))
+    rules = rules_result.scalar_one_or_none()
+    if not rules:
+        raise HTTPException(status_code=500, detail="Rules not found")
+
+    if flight.flight_duration < rules.min_flight_time:
+        raise HTTPException(status_code=400, detail=f"Flight duration must be at least {rules.min_flight_time} minutes")
+
+    num_stops = len(route.flight_details)
+    if num_stops > rules.max_transit_airports:
+        raise HTTPException(status_code=400, detail=f"Too many transit airports: max is {rules.max_transit_airports}")
+
+    for detail in route.flight_details:
+        if detail.stop_time < rules.min_stop_time or detail.stop_time > rules.max_stop_time:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Stop duration at airport '{detail.transit_airport_id}' must be between {rules.min_stop_time} and {rules.max_stop_time} minutes"
+            )
+
+    if len(flight.seat_type) >= rules.ticket_class_count:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Number of ticket classes: {rules.ticket_class_count}"
+        )
+
     exist_flight.flight_route_id = flight.flight_route
     exist_flight.flight_date = flight.departure_date
     exist_flight.departure_time = flight.departure_time
