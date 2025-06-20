@@ -34,7 +34,7 @@ async def get_all_flights(db: AsyncSession, skip: int = 0, limit: int = 1000) ->
     now = datetime.now()
     rules = await db.execute(select(Rules))
     rules = rules.scalar()
-    latest_booking_delta = timedelta(hours=rules.latest_time_to_book)
+    latest_booking_delta = timedelta(hours=rules.latest_booking_time)
 
     
     result = await db.execute(select(Flight)
