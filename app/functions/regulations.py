@@ -11,7 +11,9 @@ from fastapi import HTTPException
 from app.models.TicketClass import TicketClass
 from sqlalchemy import func, select, join,and_, or_
 from sqlalchemy.orm import selectinload
+from app.models.TicketPrice import TicketPrice
 
+from sqlalchemy.orm import selectinload
 
 class RulesOut(BaseModel):
     airport_number: Optional[int] = None
@@ -203,7 +205,7 @@ class TicketClassCreate(BaseModel):
 async def get_ticket_class(db: AsyncSession) -> List[TicketClass]:
     result = await db.execute(select(TicketClass))
     
-    return result.scalars().all()
+    return result.unique().scalars().all()
 
 async def create_tkclass(input: TicketClassCreate, db: AsyncSession) -> Optional[TicketClass]:
     new_ticket_class = TicketClass(
@@ -214,3 +216,102 @@ async def create_tkclass(input: TicketClassCreate, db: AsyncSession) -> Optional
     await db.commit()
     await db.refresh(new_ticket_class)
     return new_ticket_class
+
+class TicketClassRoute(BaseModel):
+    flight_route_id: Optional[str] = None
+    ticket_class_name: Optional[str] = None
+    price: Optional[int] = None
+    
+    
+    
+async def get_ticket_class_by_route(db: AsyncSession) -> List[TicketClassRoute]:
+    result = await db.execute(select(TicketPrice).options(selectinload(TicketPrice.ticket_class)))
+    
+    results = result.scalars().all()
+
+    ticket_class = []
+    
+    for result in results:
+        ticket_class.append(TicketClassRoute(
+            flight_route_id= result.flight_route_id,
+            ticket_class_name= result.ticket_class.ticket_class_name,
+            price = result.price
+        ))
+
+
+    return ticket_class
+
+async def generate_ticket_price_id(session) -> str:
+    result = await session.execute(select(TicketPrice.ticket_price_id))
+    ids = [row[0] for row in result.fetchall() if row[0]]
+
+    max_num = 0
+    for bid in ids:
+        match = re.search(r'DG(\d+)', bid)
+        if match:
+            try:
+                num = int(match.group(1))
+                max_num = max(max_num, num)
+            except ValueError:
+                continue  
+
+    next_num = max_num + 1
+    return f"DG{next_num:02d}" 
+
+
+async def get_ticket_class_id_by_name(name: str, db: AsyncSession) -> str:
+    result = await db.execute(
+        select(TicketClass.ticket_class_id)
+        .where(TicketClass.ticket_class_name == name)
+    )
+    ticket_class_id = result.scalar_one_or_none()
+
+    if not ticket_class_id:
+        raise HTTPException(status_code=404, detail=f"Ticket class '{name}' not exists.")
+
+    return ticket_class_id
+
+async def create_ticket_class_by_route(input: TicketClassRoute,db: AsyncSession) -> List[TicketClassRoute]:
+
+
+    rules = await db.execute(select(Rules))
+    
+    rules = rules.scalar_one_or_none()  
+    if not rules:
+        raise HTTPException(status_code=404, detail="Rules not found")
+    
+    
+    count_ = await db.execute(select(func.count(TicketPrice.ticket_class_id)).where(TicketPrice.flight_route_id == input.flight_route_id))
+    if count_.scalar() < rules.ticket_class_count:
+        
+        ticket_class_id = await get_ticket_class_id_by_name(input.ticket_class_name, db)
+
+        result = await db.execute(
+            select(TicketPrice).where(
+                TicketPrice.flight_route_id == input.flight_route_id,
+                TicketPrice.ticket_class_id == ticket_class_id
+            )
+        )
+        if result.scalar_one_or_none(): 
+            raise HTTPException(status_code=400, detail="Ticket price exists")
+
+        new_id = await generate_ticket_price_id(db)
+
+        new_price = TicketPrice(
+            ticket_price_id=new_id,
+            flight_route_id=input.flight_route_id,
+            ticket_class_id=ticket_class_id,
+            price=input.price
+        )
+        db.add(new_price)
+        await db.commit()
+        await db.refresh(new_price)
+
+        return TicketClassRoute(
+            flight_route_id=input.flight_route_id,
+            ticket_class_name=input.ticket_class_name,
+            price=input.price
+        )
+        
+    else:
+        raise HTTPException(status_code= 404, detail="Ticket class in flight route is full")

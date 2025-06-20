@@ -4,8 +4,10 @@ from app.functions.regulations import get_rules, update_rules
 from app.deps import get_db
 from fastapi import APIRouter, HTTPException, Depends
 from app.functions.regulations import RulesOut, RulesUpdate,FlightTransitOut, get_transit_airport,create_transit, delete_transit, DeleteDetail, create_tkclass, get_ticket_class
-from app.functions.regulations import TicketClassCreate
+from app.functions.regulations import TicketClassCreate, TicketClassRoute, get_ticket_class_by_route, create_ticket_class_by_route
+
 from app.models.TicketClass import TicketClass
+
 router = APIRouter()
 
 
@@ -86,3 +88,28 @@ async def create_ticket_class(input: TicketClassCreate, db: AsyncSession = Depen
     
     except Exception as e:
         raise HTTPException(status_code= 500, detail= str(e))
+    
+    
+    
+@router.get("/ticket_class_by_route", response_model= List[TicketClassRoute])
+async def get_ticket_class_route(db: AsyncSession = Depends(get_db)):
+    try:
+        result = await get_ticket_class_by_route(db)
+        return result
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail= str(e))
+    
+    
+@router.post("/create_ticket_class_by_route", response_model=TicketClassRoute)
+async def create_ticket_class_route(input: TicketClassRoute, db: AsyncSession = Depends(get_db)):
+    try:
+        result = await create_ticket_class_by_route(input, db)
+        return result
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        import traceback
+        tb_str = traceback.format_exc()
+        print("Exception traceback:", tb_str)
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
