@@ -1,7 +1,7 @@
     
     
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.functions.flight_management import find_flights_by_filter, FlightCreate, create_new_flight, update_flight, delete_flight,get_all_flights
+from app.functions.flight_management import find_flights_by_filter, FlightCreate, create_new_flight, update_flight, delete_flight,get_all_flights,get_ticket_class_by_route
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException, status, Depends
 from app.deps import get_db
@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from app.crud.ticket_class import get_ticket_class
 from sqlalchemy import select
 from app.models.Flight import Flight
-
+from app.models.FlightRoute import FlightRoute
 
 router = APIRouter()
     
@@ -270,6 +270,53 @@ async def get_all_ticket_class(flight_id: str,skip: int = 0, limit: int = 1000, 
                 ticket_class_name = ticket.ticket_class.ticket_class_name,
                 price=ticket_price,
                 available_seats=ticket.available_seats
+            )
+
+            result.append(stat)
+        
+        
+        return result 
+    
+    except Exception as e:
+        raise HTTPException(status_code= 500, detail= str(e))
+    
+    
+    
+    
+
+class TicketClassRouteOut(BaseModel):
+    ticket_class_id: Optional[str] = None
+    ticket_class_name: Optional[str] = None
+    price: Optional[int] = None
+    
+    
+@router.get("/ticket_route", response_model=List[TicketClassRouteOut])
+async def get_all_ticket_class_by_route(flight_route_id: str,skip: int = 0, limit: int = 1000, db: AsyncSession = Depends(get_db)):
+    try:
+        flight_route = await db.execute(
+            select(FlightRoute).where(FlightRoute.flight_route_id == flight_route_id)
+        )
+        flight_route = flight_route.scalar_one_or_none()
+        if not flight_route:
+            raise HTTPException(status_code=404, detail="FlightRoute not found")
+
+        route_id = flight_route.flight_route_id
+        
+        tickets = await get_ticket_class_by_route(db, flight_route_id, skip, limit)
+
+        result = []
+        
+        for ticket in tickets:
+            ticket_class = ticket.ticket_class
+            ticket_price = next(
+                (price.price for price in ticket_class.ticket_prices
+                 if price.flight_route_id == route_id),
+                None
+            ) 
+            stat = TicketClassRouteOut(
+                ticket_class_id = ticket.ticket_class_id,
+                ticket_class_name = ticket.ticket_class.ticket_class_name,
+                price=ticket_price,
             )
 
             result.append(stat)

@@ -16,7 +16,7 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 import re
 from app.models.Rules import Rules
-
+from app.models.TicketPrice import TicketPrice
 
     
 async def generate_next_id(session):
@@ -350,3 +350,11 @@ async def delete_flight(flight_ids: List[str], db: AsyncSession) -> Optional[Fli
     except SQLAlchemyError as e:
         await db.rollback()
         return f"Delete Failed: {str(e)}"
+    
+    
+    
+async def get_ticket_class_by_route(db: AsyncSession,flight_route_id: str, skip: int = 0, limit: int = 1000) -> List[TicketPrice]:
+    result = await db.execute(select(TicketPrice)
+                            .options( selectinload(TicketPrice.ticket_class))
+                            .where(TicketPrice.flight_route_id == flight_route_id).offset(skip).limit(limit))
+    return result.unique().scalars().all()
