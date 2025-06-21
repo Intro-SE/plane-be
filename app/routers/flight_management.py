@@ -239,6 +239,8 @@ class TicketClassOut(BaseModel):
     ticket_class_name: Optional[str] = None
     price: Optional[int] = None
     available_seats: Optional[int] = None
+    total_seats: Optional[int] = None
+
     
 
     
@@ -269,7 +271,8 @@ async def get_all_ticket_class(flight_id: str,skip: int = 0, limit: int = 1000, 
                 ticket_class_id = ticket.ticket_class_id,
                 ticket_class_name = ticket.ticket_class.ticket_class_name,
                 price=ticket_price,
-                available_seats=ticket.available_seats
+                available_seats=ticket.available_seats,
+                total_seats= ticket.total_seats
             )
 
             result.append(stat)
@@ -316,7 +319,7 @@ async def get_all_ticket_class_by_route(flight_route_id: str,skip: int = 0, limi
             stat = TicketClassRouteOut(
                 ticket_class_id = ticket.ticket_class_id,
                 ticket_class_name = ticket.ticket_class.ticket_class_name,
-                price=ticket_price,
+                price=ticket_price
             )
 
             result.append(stat)
