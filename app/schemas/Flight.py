@@ -101,6 +101,7 @@ class SeatInformation(BaseModel):
     seat_type: List[str]
     seat_price: List[int]
     empty_type_seats: List[int]
+    occupied_type_seats: List[int]
     empty_seats: int
     occupied_seats: int
 

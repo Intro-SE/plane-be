@@ -45,15 +45,21 @@ class FlightCreate(BaseModel):
     
     seat_type : Optional[List[str]] = None
     empty_type_seats: Optional[List[int]] = None
+    occupied_type_seats: Optional[List[int]] = None
     
     
     class Config:
         from_attributes = True
     
     @validator('empty_type_seats')
-    def check_logic_seats(cls, v ,values):
-        if 'total_seats' in values and sum(v) != values['total_seats']:
-            raise ValueError("Not enough total seats")
+    def check_logic_seats(cls, v, values):
+        total = values.get('total_seats')
+        occupied = values.get('occupied_type_seats') or []
+
+        if total is not None:
+            if sum(v) + sum(occupied) != total:
+                raise ValueError("Not enough total seats")
+
         return v
 
 

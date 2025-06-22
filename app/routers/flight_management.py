@@ -43,6 +43,7 @@ async def get_all(skip: int = 0, limit: int = 1000, db : AsyncSession = Depends(
                     for stat in flight.ticket_class_statistics
                 ],
                 empty_type_seats=[stat.available_seats for stat in flight.ticket_class_statistics],
+                occupied_type_seats=[stat.booked_seats for stat in flight.ticket_class_statistics],
                 empty_seats=sum(stat.available_seats for stat in flight.ticket_class_statistics),
                 occupied_seats=sum(stat.booked_seats for stat in flight.ticket_class_statistics),
             )
