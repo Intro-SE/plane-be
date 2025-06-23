@@ -186,7 +186,7 @@ async def create_new_flight(db: AsyncSession, flight : FlightCreate) -> Flight:
                 detail=f"Stop duration at airport '{detail.transit_airport_id}' must be between {rules.min_stop_time} and {rules.max_stop_time} minutes"
             )
 
-    if len(flight.seat_type) >= rules.ticket_class_count:
+    if len(flight.seat_type) > rules.ticket_class_count:
         raise HTTPException(
             status_code=400,
             detail=f"Number of ticket classes: {rules.ticket_class_count}"
@@ -279,7 +279,7 @@ async def update_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
                 detail=f"Stop duration at airport '{detail.transit_airport_id}' must be between {rules.min_stop_time} and {rules.max_stop_time} minutes"
             )
 
-    if len(flight.seat_type) >= rules.ticket_class_count:
+    if len(flight.seat_type) > rules.ticket_class_count:
         raise HTTPException(
             status_code=400,
             detail=f"Number of ticket classes: {rules.ticket_class_count}"
