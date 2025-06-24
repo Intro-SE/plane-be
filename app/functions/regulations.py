@@ -308,3 +308,85 @@ async def create_ticket_class_by_route(input: TicketClassRoute,db: AsyncSession)
         ticket_class_name=input.ticket_class_name,
         price=input.price
     )
+
+async def update_transit(input: FlightTransitOut, db: AsyncSession) -> str:
+    transit = await db.execute(
+        select(FlightDetail)
+        .options(selectinload(FlightDetail.transit_airport))
+        .where(
+            FlightDetail.flight_route_id == input.flight_route_id,
+            FlightDetail.transit_airport.has(airport_name=input.transit_airport_name)
+        )
+    )
+    transit_detail = transit.scalar_one_or_none()
+
+    if not transit_detail:
+        raise HTTPException(status_code=404, detail="Transit airport not found")
+
+    rules = (await db.execute(select(Rules))).scalar_one_or_none()
+    if not rules:
+        raise HTTPException(status_code=500, detail="Rules not found")
+
+    if input.stop_time is not None:
+        if input.stop_time < rules.min_stop_time or input.stop_time > rules.max_stop_time:
+            raise HTTPException(status_code=400, detail=f"Stop time must be between {rules.min_stop_time} and {rules.max_stop_time} minutes")
+        transit_detail.stop_time = input.stop_time
+
+    if input.note is not None:
+        transit_detail.note = input.note
+
+    await db.commit()
+    return "Transit updated successfully"
+
+async def update_ticket_class(input: TicketClassCreate, db: AsyncSession) -> str:
+    if not input.ticket_class_id:
+        raise HTTPException(status_code=400, detail="ticket_class_id is required")
+
+    result = await db.execute(
+        select(TicketClass).where(TicketClass.ticket_class_id == input.ticket_class_id)
+    )
+    ticket_class = result.scalar_one_or_none()
+
+    if not ticket_class:
+        raise HTTPException(status_code=404, detail="Ticket class not found")
+
+    if input.ticket_class_name:
+        ticket_class.ticket_class_name = input.ticket_class_name
+
+    await db.commit()
+    return "Ticket class updated successfully"
+
+async def update_ticket_class_by_route(input: TicketClassRoute, db: AsyncSession) -> str:
+    if not input.flight_route_id or not input.ticket_class_name:
+        raise HTTPException(status_code=400, detail="Missing flight_route_id or ticket_class_name")
+
+    ticket_class_id = await get_ticket_class_id_by_name(input.ticket_class_name, db)
+
+    result = await db.execute(
+        select(TicketPrice)
+        .options(selectinload(TicketPrice.ticket_class))
+        .where(
+            TicketPrice.flight_route_id == input.flight_route_id,
+            TicketPrice.ticket_class_id == ticket_class_id
+        )
+    )
+    ticket_price = result.scalar_one_or_none()
+
+    if not ticket_price:
+        raise HTTPException(status_code=404, detail="Ticket price entry not found")
+
+    if input.price is not None:
+        ticket_price.price = input.price
+
+    if input.ticket_class_name:
+        ticket_class = ticket_price.ticket_class
+        if ticket_class:
+            ticket_class.ticket_class_name = input.ticket_class_name
+        else:
+            raise HTTPException(status_code=404, detail="Ticket class not found for update")
+
+    await db.commit()
+    return "Ticket price and class name updated successfully"
+
+
+

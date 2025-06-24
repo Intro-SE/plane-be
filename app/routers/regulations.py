@@ -4,7 +4,7 @@ from app.functions.regulations import get_rules, update_rules
 from app.deps import get_db
 from fastapi import APIRouter, HTTPException, Depends
 from app.functions.regulations import RulesOut, RulesUpdate,FlightTransitOut, get_transit_airport,create_transit, delete_transit, DeleteDetail, create_tkclass, get_ticket_class
-from app.functions.regulations import TicketClassCreate, TicketClassRoute, get_ticket_class_by_route, create_ticket_class_by_route
+from app.functions.regulations import TicketClassCreate, TicketClassRoute, get_ticket_class_by_route, create_ticket_class_by_route,update_transit,update_ticket_class,update_ticket_class_by_route
 
 from app.models.TicketClass import TicketClass
 
@@ -113,3 +113,35 @@ async def create_ticket_class_route(input: TicketClassRoute, db: AsyncSession = 
         tb_str = traceback.format_exc()
         print("Exception traceback:", tb_str)
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+
+
+@router.put("/update_transit", response_model=FlightTransitOut)
+async def update_transit_airport(input: FlightTransitOut, db: AsyncSession = Depends(get_db)):
+    try:
+        result = await update_transit(input, db)
+        return result
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.put("/update_ticket_class", response_model=TicketClassCreate)
+async def update_ticket_class(input: TicketClassCreate, db: AsyncSession = Depends(get_db)):
+    try:
+        result = await update_ticket_class(input, db)
+        return result
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/update_ticket_class_by_route", response_model=TicketClassRoute)
+async def update_ticket_class_route(input: TicketClassRoute, db: AsyncSession = Depends(get_db)):
+    try:
+        result = await update_ticket_class_by_route(input, db)
+        return result
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
