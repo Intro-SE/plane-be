@@ -67,6 +67,11 @@ async def get_all_flights(db: AsyncSession, skip: int = 0, limit: int = 1000) ->
 async def find_flights_by_filter(db: AsyncSession,filters: FlightSearch, skip: int = 0, limit: int = 1000) -> List[Flight]:
     conditions = []
     
+    now = datetime.now()
+    rules = await db.execute(select(Rules))
+    rules = rules.scalar()
+    latest_booking_delta = timedelta(hours=rules.latest_booking_time)
+    
     if filters.departure_address:
         conditions.append(
             Flight.flight_route.has(
@@ -116,7 +121,12 @@ async def find_flights_by_filter(db: AsyncSession,filters: FlightSearch, skip: i
     
     
     if conditions:
-        query = query.where(and_(*conditions))
+        query = query.where(and_(*conditions),
+                            or_(Flight.flight_date > now.date(),
+                                and_(
+                                    Flight.flight_date == now.date(),
+                                    Flight.departure_time > (now - latest_booking_delta).time()
+                        )))
         
         
     query = query.offset(skip).limit(limit)    
