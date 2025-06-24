@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from app.models.TicketClassStatistics import TicketClassStatistics
 from app.models.FlightRoute import FlightRoute
 from app.models.TicketClass import TicketClass
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator,model_validator
 from datetime import datetime, time, date
 from sqlalchemy import select, and_, or_, func
 from app.functions.flight_lookup import FlightSearch
@@ -44,17 +44,18 @@ class FlightCreate(BaseModel):
     total_seats: Optional[int] = None
     
     seat_type : Optional[List[str]] = None
-    empty_type_seats: Optional[List[int]] = None
+    total_type_seats: Optional[List[int]] = None
     
     
     class Config:
         from_attributes = True
     
-    @validator('empty_type_seats')
-    def check_logic_seats(cls, v ,values):
-        if 'total_seats' in values and sum(v) != values['total_seats']:
-            raise ValueError("Not enough total seats")
-        return v
+    @model_validator(mode="after")
+    def check_logic_seats(cls, values):
+        if values.total_seats and values.total_type_seats:
+            if sum(values.total_type_seats) != values.total_seats:
+                raise ValueError("Sum of total_type_seats must equal total_seats")
+        return values
 
 
 async def get_all_flights(db: AsyncSession, skip: int = 0, limit: int = 1000) -> List[Flight]:
@@ -211,7 +212,8 @@ async def create_new_flight(db: AsyncSession, flight : FlightCreate) -> Flight:
     
     db.add(new_flight)
     
-    for type_name, empty_seat in zip(flight.seat_type, flight.empty_type_seats):
+    for type_name, total_seat in zip(flight.seat_type, flight.total_type_seats):
+
         result  = await db.execute(select(TicketClass).where(TicketClass.ticket_class_name == type_name))
         ticket_class = result.unique().scalar_one_or_none()
         if not ticket_class:
@@ -222,9 +224,9 @@ async def create_new_flight(db: AsyncSession, flight : FlightCreate) -> Flight:
             flight_id = flight.flight_id,
             ticket_class_id = ticket_class.ticket_class_id,
             total_seats = flight.total_seats,
-            available_seats = empty_seat,
+            available_seats = total_seat,
             booked_seats = 0
-        )
+            )
         db.add(stats)
         
     await db.commit()
@@ -294,26 +296,44 @@ async def update_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
     flight.departure_airport = exist_flight.flight_route.departure_airport.airport_name
     flight.arrival_airport = exist_flight.flight_route.arrival_airport.airport_name
 
-    await db.execute(TicketClassStatistics.__table__.delete().where(TicketClassStatistics.flight_id == flight.flight_id))
+    result = await db.execute(
+        select(TicketClassStatistics)
+        .options(selectinload(TicketClassStatistics.ticket_class))
+        .where(TicketClassStatistics.flight_id == flight.flight_id)
+    )
     
+    existing_stats = {stat.ticket_class.ticket_class_name: stat for stat in result.scalars().all()}
+
     
-    for type_name, empty_seat in zip(flight.seat_type, flight.empty_type_seats):
-        result = await db.execute(select(TicketClass).where(TicketClass.ticket_class_name == type_name))
-        
-        ticket_class = result.unique().scalar_one_or_none()
-        
-        if not ticket_class:
-            raise HTTPException(status_code=404, detail= f"Ticket class {type_name} not exists")
-        ticket_class_statistics_id = await generate_next_id(db)
-        stats = TicketClassStatistics(
-            ticket_class_statistics_id = ticket_class_statistics_id,
-            flight_id = flight.flight_id,
-            ticket_class_id = ticket_class.ticket_class_id,
-            total_seats = flight.total_seats,
-            available_seats = empty_seat,
-            booked_seats = 0
+    for type_name, new_total_seats in zip(flight.seat_type, flight.total_type_seats):
+        result = await db.execute(
+            select(TicketClass).where(TicketClass.ticket_class_name == type_name)
         )
-        db.add(stats)
+        ticket_class = result.scalar_one_or_none()
+        if not ticket_class:
+            raise HTTPException(status_code=404, detail=f"Ticket class {type_name} not exists")
+
+        if type_name in existing_stats:
+            stat = existing_stats[type_name]
+            if new_total_seats < stat.booked_seats:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot set total seats for {type_name} to {new_total_seats} (already booked: {stat.booked_seats})"
+                )
+            stat.total_seats = new_total_seats
+            stat.available_seats = new_total_seats - stat.booked_seats
+        else:
+            ticket_class_statistics_id = await generate_next_id(db)
+            new_stat = TicketClassStatistics(
+                ticket_class_statistics_id=ticket_class_statistics_id,
+                flight_id=flight.flight_id,
+                ticket_class_id=ticket_class.ticket_class_id,
+                total_seats=new_total_seats,
+                available_seats=new_total_seats,
+                booked_seats=0
+            )
+            db.add(new_stat)
+
         
     await db.commit()
     result = await db.execute(

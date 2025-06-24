@@ -42,9 +42,11 @@ async def get_all(skip: int = 0, limit: int = 1000, db : AsyncSession = Depends(
                     stat.ticket_class.ticket_prices[0].price if stat.ticket_class.ticket_prices else 0
                     for stat in flight.ticket_class_statistics
                 ],
+                total_type_seats=[stat.total_seats for stat in flight.ticket_class_statistics],
                 empty_type_seats=[stat.available_seats for stat in flight.ticket_class_statistics],
+                occupied_type_seats =[stat.booked_seats for stat in flight.ticket_class_statistics] ,
                 empty_seats=sum(stat.available_seats for stat in flight.ticket_class_statistics),
-                occupied_seats=sum(stat.booked_seats for stat in flight.ticket_class_statistics),
+                occupied_seats=sum(stat.booked_seats for stat in flight.ticket_class_statistics)
             )
             
             flight_data = FlightOut(
@@ -96,9 +98,11 @@ async def search_flights(filters: FlightSearch, skip: int = 0, limit: int = 1000
                     stat.ticket_class.ticket_prices[0].price if stat.ticket_class.ticket_prices else 0
                     for stat in flight.ticket_class_statistics
                 ],
+                total_type_seats=[stat.total_seats for stat in flight.ticket_class_statistics],
                 empty_type_seats=[stat.available_seats for stat in flight.ticket_class_statistics],
+                occupied_type_seats =[stat.booked_seats for stat in flight.ticket_class_statistics] ,
                 empty_seats=sum(stat.available_seats for stat in flight.ticket_class_statistics),
-                occupied_seats=sum(stat.booked_seats for stat in flight.ticket_class_statistics),
+                occupied_seats=sum(stat.booked_seats for stat in flight.ticket_class_statistics)
             )
             
             flight_data = FlightOut(
@@ -146,9 +150,11 @@ async def create_flight(flight: FlightCreate, db: AsyncSession = Depends(get_db)
                 stat.ticket_class.ticket_prices[0].price if stat.ticket_class.ticket_prices else 0
                 for stat in flight.ticket_class_statistics
             ],
+            total_type_seats=[stat.total_seats for stat in flight.ticket_class_statistics],
             empty_type_seats=[stat.available_seats for stat in flight.ticket_class_statistics],
+            occupied_type_seats =[stat.booked_seats for stat in flight.ticket_class_statistics] ,
             empty_seats=sum(stat.available_seats for stat in flight.ticket_class_statistics),
-            occupied_seats=sum(stat.booked_seats for stat in flight.ticket_class_statistics),
+            occupied_seats=sum(stat.booked_seats for stat in flight.ticket_class_statistics)
         )
         
         flight_data = FlightOut(
@@ -197,9 +203,11 @@ async def update(flight: FlightCreate, db: AsyncSession = Depends(get_db)):
                 stat.ticket_class.ticket_prices[0].price if stat.ticket_class.ticket_prices else 0
                 for stat in flight.ticket_class_statistics
             ],
+            total_type_seats=[stat.total_seats for stat in flight.ticket_class_statistics],
             empty_type_seats=[stat.available_seats for stat in flight.ticket_class_statistics],
+            occupied_type_seats =[stat.booked_seats for stat in flight.ticket_class_statistics] ,
             empty_seats=sum(stat.available_seats for stat in flight.ticket_class_statistics),
-            occupied_seats=sum(stat.booked_seats for stat in flight.ticket_class_statistics),
+            occupied_seats=sum(stat.booked_seats for stat in flight.ticket_class_statistics)
         )
         
         flight_data = FlightOut(
