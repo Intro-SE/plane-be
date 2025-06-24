@@ -314,12 +314,19 @@ async def update(db: AsyncSession, update_ticket: BookingUpdate) -> Optional[Boo
     
     departure_date = ticket.flight.flight_date
     departure_time = ticket.flight.departure_time
-
+    rules = await db.execute(select(Rules))
+    
+    rules = rules.scalar()
+    
+    latest_booking_delta = timedelta(hours=rules.latest_booking_time)
     if departure_date and departure_time:
         flight_datetime = datetime.combine(departure_date, departure_time)
-        if datetime.now() >= flight_datetime:
+        update_deadline = flight_datetime - latest_booking_delta
+
+        if datetime.now() >= update_deadline:
             raise HTTPException(status_code=400, detail="Cannot update ticket: flight has already departed")
         
+    
     price_result = await db.execute(
         select(TicketPrice.price).join(TicketPrice.flight_route).join(FlightRoute.flights).where(
             Flight.flight_id == update_ticket.flight_id,
