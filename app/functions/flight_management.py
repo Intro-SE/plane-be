@@ -223,7 +223,7 @@ async def create_new_flight(db: AsyncSession, flight : FlightCreate) -> Flight:
             ticket_class_statistics_id = ticket_class_statistics_id,
             flight_id = flight.flight_id,
             ticket_class_id = ticket_class.ticket_class_id,
-            total_seats = flight.total_seats,
+            total_seats = total_seat,
             available_seats = total_seat,
             booked_seats = 0
             )
