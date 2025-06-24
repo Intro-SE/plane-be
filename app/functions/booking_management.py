@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_,or_
 from pydantic import BaseModel, validator, ValidationError
 from typing import Optional, List
 from app.models.BookingTicket import BookingTicket
@@ -112,7 +112,17 @@ class BookingUpdate(BaseModel):
         
         
 async def get_all(db: AsyncSession, skip: int = 0, limit: int = 1000) -> List[BookingTicket]:
-    result = await db.execute(select(BookingTicket).where(BookingTicket.ticket_status == False)
+    now = datetime.now()
+    today = now.date()
+    current_time = now.time()
+    result = await db.execute(select(BookingTicket).join(BookingTicket.flight).where(BookingTicket.ticket_status == False,
+                                                                    or_(
+                                                                        Flight.flight_date > today,
+                                                                        and_(
+                                                                            Flight.flight_date == today,
+                                                                            Flight.departure_time > current_time
+                                                                        )
+            ))
                               .options(
                                   selectinload(BookingTicket.flight).selectinload(Flight.flight_route),
                                   selectinload(BookingTicket.ticket_class).selectinload(TicketClass.ticket_prices),
