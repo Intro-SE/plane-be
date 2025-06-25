@@ -263,7 +263,7 @@ async def update_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
     route = exist_flight.flight_route
 
     rules_result = await db.execute(select(Rules))
-    rules = rules_result.scalar_one_or_none()
+    rules = rules_result.unique().scalars().first()
     if not rules:
         raise HTTPException(status_code=500, detail="Rules not found")
 
@@ -309,7 +309,7 @@ async def update_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
         result = await db.execute(
             select(TicketClass).where(TicketClass.ticket_class_name == type_name)
         )
-        ticket_class = result.scalar_one_or_none()
+        ticket_class = result.unique().scalars().first()
         if not ticket_class:
             raise HTTPException(status_code=404, detail=f"Ticket class {type_name} not exists")
 
@@ -347,7 +347,7 @@ async def update_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
         )
     )
     
-    refreshed_flight = result.unique().scalar_one()
+    refreshed_flight = result.unique().scalars().first()
     return refreshed_flight
     
     
