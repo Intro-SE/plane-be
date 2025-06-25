@@ -12,7 +12,7 @@ from app.models.TicketClass import TicketClass
 from sqlalchemy import func, select, join,and_, or_
 from sqlalchemy.orm import selectinload
 from app.models.TicketPrice import TicketPrice
-
+from app.models.Airport import Airport
 from sqlalchemy.orm import selectinload
 
 class RulesOut(BaseModel):
@@ -316,14 +316,21 @@ async def create_ticket_class_by_route(input: TicketClassRoute,db: AsyncSession)
     else:
         raise HTTPException(status_code=400, detail= "Ticket class in route is fully")
 
+
+
+async def get_airport_name(db: AsyncSession, name: str) -> Optional[Airport]:
+    result = await db.execute(
+        select(Airport).where(Airport.airport_name == name)
+    )
+    return result.scalar_one_or_none()
+
+
 async def update_transit(input: FlightTransitOut, db: AsyncSession) -> str:
     transit = await db.execute(
         select(FlightDetail)
         .options(selectinload(FlightDetail.transit_airport))
         .where(
-            FlightDetail.flight_route_id == input.flight_route_id,
-            FlightDetail.transit_airport.has(airport_name=input.transit_airport_name)
-        )
+            FlightDetail.flight_route_id == input.flight_route_id)
     )
     transit_detail = transit.scalar_one_or_none()
 
@@ -342,6 +349,13 @@ async def update_transit(input: FlightTransitOut, db: AsyncSession) -> str:
     if input.note is not None:
         transit_detail.note = input.note
 
+        
+    if input.transit_airport_name is not None:
+        new_airport = await get_airport_name(db, input.transit_airport_name)
+        if not new_airport:
+            raise HTTPException(status_code=404, detail="New transit airport not found")
+        transit_detail.transit_airport_id = new_airport.airport_id
+        
     await db.commit()
     return "Transit updated successfully"
 
