@@ -4,7 +4,7 @@ from app.functions.regulations import get_rules, update_rules
 from app.deps import get_db
 from fastapi import APIRouter, HTTPException, Depends
 from app.functions.regulations import RulesOut, RulesUpdate,FlightTransitOut, get_transit_airport,create_transit, delete_transit, DeleteDetail, create_tkclass, get_ticket_class
-from app.functions.regulations import TicketClassCreate, TicketClassRoute, get_ticket_class_by_route, create_ticket_class_by_route,update_transit,update_ticket_class,update_ticket_class_by_route
+from app.functions.regulations import TicketClassCreate, TicketClassRoute, get_ticket_class_by_route, create_ticket_class_by_route,update_transit,update_ticket_classs,update_ticket_class_by_route
 
 from app.models.TicketClass import TicketClass
 
@@ -128,7 +128,7 @@ async def update_transit_airport(input: FlightTransitOut, db: AsyncSession = Dep
 @router.put("/update_ticket_class", response_model=TicketClassCreate)
 async def update_ticket_class(input: TicketClassCreate, db: AsyncSession = Depends(get_db)):
     try:
-        result = await update_ticket_class(input, db)
+        result = await update_ticket_classs(input, db)
         return result
     except HTTPException as he:
         raise he

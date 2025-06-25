@@ -359,7 +359,7 @@ async def update_transit(input: FlightTransitOut, db: AsyncSession) -> str:
     await db.commit()
     return "Transit updated successfully"
 
-async def update_ticket_class(input: TicketClassCreate, db: AsyncSession) -> str:
+async def update_ticket_classs(input: TicketClassCreate, db: AsyncSession) -> str:
     if not input.ticket_class_id:
         raise HTTPException(status_code=400, detail="ticket_class_id is required")
 
