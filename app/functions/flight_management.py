@@ -137,7 +137,7 @@ async def find_flights_by_filter(db: AsyncSession,filters: FlightSearch, skip: i
         .join(FlightRoute.departure_airport)
         .options(
             selectinload(Flight.flight_route).selectinload(FlightRoute.departure_airport),
-            selectinload(Flight.flight_route).selectinload(FlightRoute.departure_airport),
+            selectinload(Flight.flight_route).selectinload(FlightRoute.arrival_airport),
             selectinload(Flight.flight_route).selectinload(FlightRoute.flight_details).selectinload(FlightDetail.transit_airport),
             selectinload(Flight.ticket_class_statistics).selectinload(TicketClassStatistics.ticket_class).selectinload(TicketClass.ticket_prices),        )
     )
@@ -154,32 +154,37 @@ async def find_flights_by_filter(db: AsyncSession,filters: FlightSearch, skip: i
 
 
 
-async def create_new_flight(db: AsyncSession, flight : FlightCreate) -> Flight:
-    result=await  db.execute(select(FlightRoute).where(FlightRoute.flight_route_id == flight.flight_route)
-                             .options(
-                                 selectinload(FlightRoute.departure_airport),
-                                 selectinload(FlightRoute.arrival_airport),
-                                 selectinload(FlightRoute.flight_details),
-                             ))
-    
+async def create_new_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
+    # 1. Truy vấn tuyến bay
+    result = await db.execute(
+        select(FlightRoute)
+        .where(FlightRoute.flight_route_id == flight.flight_route)
+        .options(
+            selectinload(FlightRoute.departure_airport),
+            selectinload(FlightRoute.arrival_airport),
+            selectinload(FlightRoute.flight_details),
+        )
+    )
     route = result.unique().scalar_one_or_none()
-    
     if not route:
-        raise HTTPException(status_code= 404, detail= "Flight route not found")
+        raise HTTPException(status_code=404, detail="Flight route not found")
 
-
+    # 2. Lấy quy định hệ thống
     rules_result = await db.execute(select(Rules))
     rules = rules_result.scalar_one_or_none()
     if not rules:
         raise HTTPException(status_code=500, detail="Rules not found")
 
+    # 3. Check thời gian bay tối thiểu
     if flight.flight_duration < rules.min_flight_time:
         raise HTTPException(status_code=400, detail=f"Flight duration must be at least {rules.min_flight_time} minutes")
 
+    # 4. Check số lượng sân bay trung gian
     num_stops = len(route.flight_details)
     if num_stops > rules.max_transit_airports:
         raise HTTPException(status_code=400, detail=f"Too many transit airports: max is {rules.max_transit_airports}")
 
+    # 5. Check thời gian dừng tại sân bay trung gian
     for detail in route.flight_details:
         if detail.stop_time < rules.min_stop_time or detail.stop_time > rules.max_stop_time:
             raise HTTPException(
@@ -187,48 +192,69 @@ async def create_new_flight(db: AsyncSession, flight : FlightCreate) -> Flight:
                 detail=f"Stop duration at airport '{detail.transit_airport_id}' must be between {rules.min_stop_time} and {rules.max_stop_time} minutes"
             )
 
-    if len(flight.seat_type) > rules.ticket_class_count:
+    # 6. Check danh sách các hạng vé của tuyến bay
+    ticket_prices_result = await db.execute(
+        select(TicketPrice)
+        .where(TicketPrice.flight_route_id == route.flight_route_id)
+        .options(selectinload(TicketPrice.ticket_class))
+    )
+    ticket_prices = ticket_prices_result.scalars().all()
+    route_ticket_classes = {tp.ticket_class.ticket_class_name for tp in ticket_prices}
+
+    # 7. Kiểm tra số lượng hạng vé nhập có vượt quá số lượng hạng vé của tuyến bay được nhập không
+    if len(flight.seat_type) > len(route_ticket_classes):
         raise HTTPException(
             status_code=400,
-            detail=f"Number of ticket classes: {rules.ticket_class_count}"
+            detail=f"Too many ticket classes in flight. Max allowed for this route: {len(route_ticket_classes)}"
         )
-        
+
+    # 8. Kiểm tra các hạng vé có thuộc danh sách hạng vé của tuyến bay hay không
+    for seat_class in flight.seat_type:
+        if seat_class not in route_ticket_classes:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Ticket class '{seat_class}' is not available for the route"
+            )
+
+    # 9. Lấy tên sân bay đi và đến để hiển thị (không lưu)
     flight.departure_airport = route.departure_airport.airport_name
     flight.arrival_airport = route.arrival_airport.airport_name
-    
-    check = await db.execute(select(Flight).where(Flight.flight_id == flight.flight_id))
-    
-    if check.scalar_one_or_none():
-        raise HTTPException(status_code= 400, detail= "Flight already exists")
-    
-    new_flight = Flight(
-        flight_id = flight.flight_id,
-        flight_route_id = flight.flight_route,
-        flight_date = flight.departure_date,
-        departure_time = flight.departure_time,
-        flight_duration = flight.flight_duration,
-        flight_seat_count = flight.total_seats
-    )
-    
-    db.add(new_flight)
-    
-    for type_name, total_seat in zip(flight.seat_type, flight.total_type_seats):
 
-        result  = await db.execute(select(TicketClass).where(TicketClass.ticket_class_name == type_name))
+    # 10. Check mã chuyến bay đã tồn tại chưa
+    check = await db.execute(select(Flight).where(Flight.flight_id == flight.flight_id))
+    if check.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Flight already exists")
+
+    # 11. Tạo chuyến bay mới
+    new_flight = Flight(
+        flight_id=flight.flight_id,
+        flight_route_id=flight.flight_route,
+        flight_date=flight.departure_date,
+        departure_time=flight.departure_time,
+        flight_duration=flight.flight_duration,
+        flight_seat_count=flight.total_seats
+    )
+    db.add(new_flight)
+
+    # 12. Tạo thống kê cho từng hạng vé
+    for type_name, total_seat in zip(flight.seat_type, flight.total_type_seats):
+        result = await db.execute(select(TicketClass).where(TicketClass.ticket_class_name == type_name))
         ticket_class = result.unique().scalar_one_or_none()
         if not ticket_class:
-            raise HTTPException(status_code=404, detail=f"Ticket class'{type_name}' not exists")
+            raise HTTPException(status_code=404, detail=f"Ticket class '{type_name}' does not exist")
+
         ticket_class_statistics_id = await generate_next_id(db)
         stats = TicketClassStatistics(
-            ticket_class_statistics_id = ticket_class_statistics_id,
-            flight_id = flight.flight_id,
-            ticket_class_id = ticket_class.ticket_class_id,
-            total_seats = total_seat,
-            available_seats = total_seat,
-            booked_seats = 0
-            )
+            ticket_class_statistics_id=ticket_class_statistics_id,
+            flight_id=flight.flight_id,
+            ticket_class_id=ticket_class.ticket_class_id,
+            total_seats=total_seat,
+            available_seats=total_seat,
+            booked_seats=0
+        )
         db.add(stats)
-        
+
+    # 13. Commit và trả kết quả
     await db.commit()
     result = await db.execute(
         select(Flight)
@@ -240,7 +266,6 @@ async def create_new_flight(db: AsyncSession, flight : FlightCreate) -> Flight:
             selectinload(Flight.ticket_class_statistics).selectinload(TicketClassStatistics.ticket_class).selectinload(TicketClass.ticket_prices)
         )
     )
-    
     refreshed_flight = result.unique().scalar_one()
     return refreshed_flight
 
@@ -249,19 +274,23 @@ async def create_new_flight(db: AsyncSession, flight : FlightCreate) -> Flight:
 
 
 async def update_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
-    
-    result = await db.execute(select(Flight).where(Flight.flight_id == flight.flight_id)
-                              .options(
-                                  selectinload(Flight.flight_route).selectinload(FlightRoute.departure_airport),
-                                  selectinload(Flight.flight_route).selectinload(FlightRoute.arrival_airport),
-                                  selectinload(Flight.ticket_class_statistics).selectinload(TicketClassStatistics.ticket_class)
-                              ))
+    # Truy xuất chuyến bay cần cập nhật
+    result = await db.execute(
+        select(Flight)
+        .where(Flight.flight_id == flight.flight_id)
+        .options(
+            selectinload(Flight.flight_route).selectinload(FlightRoute.departure_airport),
+            selectinload(Flight.flight_route).selectinload(FlightRoute.arrival_airport),
+            selectinload(Flight.ticket_class_statistics).selectinload(TicketClassStatistics.ticket_class)
+        )
+    )
     exist_flight = result.unique().scalar_one_or_none()
     if not exist_flight:
-        raise HTTPException(status_code= 404, detail= "Flight not exists")
-    
+        raise HTTPException(status_code=404, detail="Flight not exists")
+
     route = exist_flight.flight_route
 
+    # Lấy quy định hệ thống
     rules_result = await db.execute(select(Rules))
     rules = rules_result.unique().scalars().first()
     if not rules:
@@ -281,34 +310,50 @@ async def update_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
                 detail=f"Stop duration at airport '{detail.transit_airport_id}' must be between {rules.min_stop_time} and {rules.max_stop_time} minutes"
             )
 
-    if len(flight.seat_type) > rules.ticket_class_count:
+    # Kiểm tra hạng vé tuyến bay và chuyến bay
+    ticket_prices_result = await db.execute(
+        select(TicketPrice)
+        .where(TicketPrice.flight_route_id == route.flight_route_id)
+        .options(selectinload(TicketPrice.ticket_class))
+    )
+    ticket_prices = ticket_prices_result.scalars().all()
+    route_ticket_classes = {tp.ticket_class.ticket_class_name for tp in ticket_prices}
+
+    if len(flight.seat_type) > len(route_ticket_classes):
         raise HTTPException(
             status_code=400,
-            detail=f"Number of ticket classes: {rules.ticket_class_count}"
+            detail=f"Too many ticket classes in flight. Max allowed for this route: {len(route_ticket_classes)}"
         )
 
+    for seat_class in flight.seat_type:
+        if seat_class not in route_ticket_classes:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Ticket class '{seat_class}' is not assigned to this route"
+            )
+
+    # Cập nhật thông tin chuyến bay
     exist_flight.flight_route_id = flight.flight_route
     exist_flight.flight_date = flight.departure_date
     exist_flight.departure_time = flight.departure_time
     exist_flight.flight_duration = flight.flight_duration
     exist_flight.flight_seat_count = flight.total_seats
-    
+
+    # Gán lại tên sân bay cho FE
     flight.departure_airport = exist_flight.flight_route.departure_airport.airport_name
     flight.arrival_airport = exist_flight.flight_route.arrival_airport.airport_name
 
+    # Lấy thông tin thống kê ghế hiện có
     result = await db.execute(
         select(TicketClassStatistics)
         .options(selectinload(TicketClassStatistics.ticket_class))
         .where(TicketClassStatistics.flight_id == flight.flight_id)
     )
-    
     existing_stats = {stat.ticket_class.ticket_class_name: stat for stat in result.scalars().all()}
 
-    
+    # Cập nhật hoặc thêm thống kê hạng vé
     for type_name, new_total_seats in zip(flight.seat_type, flight.total_type_seats):
-        result = await db.execute(
-            select(TicketClass).where(TicketClass.ticket_class_name == type_name)
-        )
+        result = await db.execute(select(TicketClass).where(TicketClass.ticket_class_name == type_name))
         ticket_class = result.unique().scalars().first()
         if not ticket_class:
             raise HTTPException(status_code=404, detail=f"Ticket class {type_name} not exists")
@@ -334,8 +379,9 @@ async def update_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
             )
             db.add(new_stat)
 
-        
     await db.commit()
+
+    # Trả lại dữ liệu chuyến bay sau khi cập nhật
     result = await db.execute(
         select(Flight)
         .where(Flight.flight_id == flight.flight_id)
@@ -346,9 +392,10 @@ async def update_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
             selectinload(Flight.ticket_class_statistics).selectinload(TicketClassStatistics.ticket_class).selectinload(TicketClass.ticket_prices)
         )
     )
-    
+
     refreshed_flight = result.unique().scalars().first()
     return refreshed_flight
+
     
     
     
