@@ -280,34 +280,41 @@ async def create_ticket_class_by_route(input: TicketClassRoute,db: AsyncSession)
     if not rules:
         raise HTTPException(status_code=404, detail="Rules not found")
             
-    ticket_class_id = await get_ticket_class_id_by_name(input.ticket_class_name, db)
+    count_ = await db.execute(select(func.count(TicketPrice.ticket_class_id)).where(TicketPrice.flight_route_id == input.flight_route_id))
 
-    result = await db.execute(
-        select(TicketPrice).where(
-            TicketPrice.flight_route_id == input.flight_route_id,
-            TicketPrice.ticket_class_id == ticket_class_id
+    if count_.scalar() < rules.ticket_class_count:
+
+        ticket_class_id = await get_ticket_class_id_by_name(input.ticket_class_name, db)
+
+        result = await db.execute(
+            select(TicketPrice).where(
+                TicketPrice.flight_route_id == input.flight_route_id,
+                TicketPrice.ticket_class_id == ticket_class_id
+            )
         )
-    )
-    if result.scalar_one_or_none(): 
-        raise HTTPException(status_code=400, detail="Ticket price exists")
+        if result.scalar_one_or_none(): 
+            raise HTTPException(status_code=400, detail="Ticket price exists")
 
-    new_id = await generate_ticket_price_id(db)
+        new_id = await generate_ticket_price_id(db)
 
-    new_price = TicketPrice(
-        ticket_price_id=new_id,
-        flight_route_id=input.flight_route_id,
-        ticket_class_id=ticket_class_id,
-        price=input.price
-    )
-    db.add(new_price)
-    await db.commit()
-    await db.refresh(new_price)
+        new_price = TicketPrice(
+            ticket_price_id=new_id,
+            flight_route_id=input.flight_route_id,
+            ticket_class_id=ticket_class_id,
+            price=input.price
+        )
+        db.add(new_price)
+        await db.commit()
+        await db.refresh(new_price)
 
-    return TicketClassRoute(
-        flight_route_id=input.flight_route_id,
-        ticket_class_name=input.ticket_class_name,
-        price=input.price
-    )
+        return TicketClassRoute(
+            flight_route_id=input.flight_route_id,
+            ticket_class_name=input.ticket_class_name,
+            price=input.price
+        )
+
+    else:
+        raise HTTPException(status_code=400, detail= "Ticket class in route is fully")
 
 async def update_transit(input: FlightTransitOut, db: AsyncSession) -> str:
     transit = await db.execute(
