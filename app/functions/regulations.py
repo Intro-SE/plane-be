@@ -198,18 +198,37 @@ async def delete_transit(input: DeleteDetail, db: AsyncSession) -> str:
 
 
 class TicketClassCreate(BaseModel):
-    ticket_class_id: Optional[str] = None
     ticket_class_name: Optional[str] = None
-    
+   
+class TicketClassUpdate(BaseModel):
+    ticket_class_id: Optional[str] = None
+    ticket_class_name: Optional[str] = None 
     
 async def get_ticket_class(db: AsyncSession) -> List[TicketClass]:
     result = await db.execute(select(TicketClass))
     
     return result.unique().scalars().all()
 
+
+async def generate_next_ticket_class_id(session):
+    result = await session.execute(select(TicketClass.ticket_class_id))
+    ids = [row[0] for row in result.all()]
+
+    max_num = 0
+    for bid in ids:
+        match = re.search(r'HV(\d+)', bid)
+        if match:
+            num = int(match.group(1))
+            max_num = max(max_num, num)
+
+    next_num = max_num + 1
+    return f"HV{next_num:02d}" 
+
+
 async def create_tkclass(input: TicketClassCreate, db: AsyncSession) -> Optional[TicketClass]:
+    ticket_class_id = await generate_next_ticket_class_id(db)
     new_ticket_class = TicketClass(
-        ticket_class_id=input.ticket_class_id,
+        ticket_class_id=ticket_class_id,
         ticket_class_name=input.ticket_class_name
     )
     db.add(new_ticket_class)
@@ -359,7 +378,7 @@ async def update_transit(input: FlightTransitOut, db: AsyncSession) -> str:
     await db.commit()
     return "Transit updated successfully"
 
-async def update_ticket_classs(input: TicketClassCreate, db: AsyncSession) -> str:
+async def update_ticket_classs(input: TicketClassUpdate, db: AsyncSession) -> str:
     if not input.ticket_class_id:
         raise HTTPException(status_code=400, detail="ticket_class_id is required")
 
