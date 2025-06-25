@@ -381,33 +381,33 @@ async def update_ticket_class_by_route(input: TicketClassRoute, db: AsyncSession
     if not input.flight_route_id or not input.ticket_class_name:
         raise HTTPException(status_code=400, detail="Missing flight_route_id or ticket_class_name")
 
-    ticket_class_id = await get_ticket_class_id_by_name(input.ticket_class_name, db)
+    new_ticket_class_id = await get_ticket_class_id_by_name(input.ticket_class_name, db)
 
-    result = await db.execute(
-        select(TicketPrice)
-        .options(selectinload(TicketPrice.ticket_class))
-        .where(
+    duplicate_check = await db.execute(
+        select(TicketPrice).where(
             TicketPrice.flight_route_id == input.flight_route_id,
-            TicketPrice.ticket_class_id == ticket_class_id
+            TicketPrice.ticket_class_id == new_ticket_class_id
         )
     )
-    ticket_price = result.scalar_one_or_none()
+    if duplicate_check.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="This ticket class has already been added to the route.")
+
+    current = await db.execute(
+        select(TicketPrice)
+        .where(TicketPrice.flight_route_id == input.flight_route_id)
+        .limit(1)
+    )
+    ticket_price = current.scalar_one_or_none()
 
     if not ticket_price:
-        raise HTTPException(status_code=404, detail="Ticket price entry not found")
+        raise HTTPException(status_code=404, detail="No ticket price entry found for update.")
 
+    ticket_price.ticket_class_id = new_ticket_class_id
     if input.price is not None:
         ticket_price.price = input.price
 
-    if input.ticket_class_name:
-        ticket_class = ticket_price.ticket_class
-        if ticket_class:
-            ticket_class.ticket_class_name = input.ticket_class_name
-        else:
-            raise HTTPException(status_code=404, detail="Ticket class not found for update")
-
     await db.commit()
-    return "Ticket price and class name updated successfully"
+    return "Ticket class and price updated successfully"
 
 
 
