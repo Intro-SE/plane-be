@@ -71,6 +71,9 @@ async def find_flights_by_filter(db: AsyncSession,filters: FlightSearch, skip: i
     rules = await db.execute(select(Rules))
     rules = rules.scalar()
     latest_booking_delta = timedelta(hours=rules.latest_booking_time)
+
+    if filters.flight_id:
+        conditions.append(Flight.flight_id == filters.flight_id)
     
     if filters.departure_address:
         conditions.append(
@@ -114,7 +117,7 @@ async def find_flights_by_filter(db: AsyncSession,filters: FlightSearch, skip: i
         .join(FlightRoute.departure_airport)
         .options(
             selectinload(Flight.flight_route).selectinload(FlightRoute.departure_airport),
-            selectinload(Flight.flight_route).selectinload(FlightRoute.departure_airport),
+            selectinload(Flight.flight_route).selectinload(FlightRoute.arrival_airport),
             selectinload(Flight.flight_route).selectinload(FlightRoute.flight_details).selectinload(FlightDetail.transit_airport),
             selectinload(Flight.ticket_class_statistics).selectinload(TicketClassStatistics.ticket_class).selectinload(TicketClass.ticket_prices),        )
     )
