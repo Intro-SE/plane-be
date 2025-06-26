@@ -134,8 +134,17 @@ async def get_all(db: AsyncSession, skip: int = 0, limit: int = 1000) -> List[Bo
 
 
 async def search_by_filters(db: AsyncSession, filters: TicketSearch,skip: int = 0, limit: int = 1000) -> List[BookingTicket]:
-    
-    query = (select(BookingTicket).join(BookingTicket.flight).join(BookingTicket.ticket_class).where(BookingTicket.ticket_status == False)
+    now = datetime.now()
+    today = now.date()
+    current_time = now.time()
+    query = (select(BookingTicket).join(BookingTicket.flight).join(BookingTicket.ticket_class).where(BookingTicket.ticket_status == False,
+                                                                    or_(
+                                                                        Flight.flight_date > today,
+                                                                        and_(
+                                                                            Flight.flight_date == today,
+                                                                            Flight.departure_time > current_time
+                                                                        )
+            ))
                               .options(
                                   selectinload(BookingTicket.flight).selectinload(Flight.flight_route).selectinload(FlightRoute.departure_airport),
                                   selectinload(BookingTicket.flight).selectinload(Flight.flight_route).selectinload(FlightRoute.arrival_airport),
@@ -227,155 +236,193 @@ async def search_by_filters(db: AsyncSession, filters: TicketSearch,skip: int = 
     return result.scalars().all()
 
 async def create(db: AsyncSession, new_ticket: BookingCreate) -> Optional[BookingTicket]:
-    
+    # 1. Truy xuất chuyến bay
     flight = await get_id(db, new_ticket.flight_id)
-    
     if not flight:
-        raise HTTPException(status_code= 404, detail= "Flight not exists")
-    
-    
-    result = await db.execute(select(TicketClassStatistics).join(TicketClassStatistics.flight).join(TicketClassStatistics.ticket_class)
-                                                            .where(Flight.flight_route_id == flight.flight_route_id,
-                                                                TicketClassStatistics.flight_id == new_ticket.flight_id,
-                                                                  TicketClassStatistics.ticket_class_id == new_ticket.ticket_class_id,
-))
-    
-    ticket_ = result.scalars().first()
-    
-    
-    rules = await db.execute(select(Rules))
-    
-    rules = rules.scalar()
-    
+        raise HTTPException(status_code=404, detail="Flight not exists")
+
+    # 2. Truy xuất thông tin thống kê vé, bao gồm ticket_class và ticket_prices
+    result = await db.execute(
+        select(TicketClassStatistics)
+        .join(TicketClassStatistics.flight)
+        .join(TicketClassStatistics.ticket_class)
+        .options(
+            selectinload(TicketClassStatistics.ticket_class).selectinload(TicketClass.ticket_prices)
+        )
+        .where(
+            Flight.flight_route_id == flight.flight_route_id,
+            TicketClassStatistics.flight_id == new_ticket.flight_id,
+            TicketClassStatistics.ticket_class_id == new_ticket.ticket_class_id,
+        )
+    )
+    ticket_stat = result.scalars().first()
+
+    # 3. Truy xuất quy định hệ thống
+    rules_result = await db.execute(select(Rules))
+    rules = rules_result.scalar_one_or_none()
+    if not rules:
+        raise HTTPException(status_code=500, detail="System rules not found")
+
     now = datetime.now()
-    latest_booking_delta = timedelta(hours=rules.latest_booking_time)
     flight_datetime = datetime.combine(flight.flight_date, flight.departure_time)
-    booking_deadline = flight_datetime - latest_booking_delta
-    
-    if now < booking_deadline:
-        
-        if not ticket_:
-            raise HTTPException(status_code=404, detail= "Ticket class not found ")
-        
-        if ticket_.available_seats <= 0:
-            raise HTTPException(status_code= 400, detail= "No available seat in flight")
-        if not ticket_.ticket_class.ticket_prices:
-            raise HTTPException(status_code=400, detail="Ticket class has no price info")
+    booking_deadline = flight_datetime - timedelta(hours=rules.latest_booking_time)
 
-        ticket_.available_seats -= 1
-        ticket_.booked_seats += 1
-        
-        db.add(ticket_)
-        await db.flush()
-        
-        booking_ticket_id = await generate_next_id(db)
-
-        route_id = flight.flight_route_id
-        
-        price_result = await db.execute(
-            select(TicketPrice.price).where(
-                TicketPrice.flight_route_id == route_id,
-                TicketPrice.ticket_class_id == new_ticket.ticket_class_id
-            )
-        )
-        
-        ticket_price = price_result.scalar_one_or_none()
-        
-        if ticket_price is None:
-            raise HTTPException(status_code=400, detail="Ticket price not found for route and class")
-        
-        new_ticket.booking_price = ticket_price
-        ticket = BookingTicket(
-            booking_ticket_id = booking_ticket_id,
-            flight_id = new_ticket.flight_id,
-            passenger_name = new_ticket.passenger_name,
-            national_id = new_ticket.national_id,
-            gender = new_ticket.passenger_gender,
-            phone_number = new_ticket.passenger_phone,
-            ticket_class_id = new_ticket.ticket_class_id,
-            booking_price = new_ticket.booking_price,
-            booking_date = datetime.now().date(),
-            ticket_status = False,
-            
-            employee_id = new_ticket.employee_id
-        )
-
-        print(ticket.booking_price)
-        db.add(ticket)
-        await db.commit()
-        await db.refresh(ticket)
-        return ticket
-
-    else:
+    # 4. Check điều kiện được phép đặt vé
+    if now >= booking_deadline:
         raise HTTPException(status_code=400, detail="This flight is no longer available for booking")
 
+    if not ticket_stat:
+        raise HTTPException(status_code=404, detail="Ticket class not found")
+
+    if ticket_stat.available_seats <= 0:
+        raise HTTPException(status_code=400, detail="No available seats in flight")
+
+    if not ticket_stat.ticket_class.ticket_prices:
+        raise HTTPException(status_code=400, detail="Ticket class has no price info")
+
+    # 5. Cập nhật thống kê vé
+    ticket_stat.available_seats -= 1
+    ticket_stat.booked_seats += 1
+    db.add(ticket_stat)
+    await db.flush()
+
+    # 6. Lấy giá vé từ bảng TicketPrice
+    route_id = flight.flight_route_id
+    price_result = await db.execute(
+        select(TicketPrice.price).where(
+            TicketPrice.flight_route_id == route_id,
+            TicketPrice.ticket_class_id == new_ticket.ticket_class_id
+        )
+    )
+    ticket_price = price_result.scalar_one_or_none()
+    if ticket_price is None:
+        raise HTTPException(status_code=400, detail="Ticket price not found for route and class")
+
+    # 7. Tạo mã vé mới
+    booking_ticket_id = await generate_next_id(db)
+
+    # 8. Tạo vé
+    new_ticket.booking_price = ticket_price
+    ticket = BookingTicket(
+        booking_ticket_id=booking_ticket_id,
+        flight_id=new_ticket.flight_id,
+        passenger_name=new_ticket.passenger_name,
+        national_id=new_ticket.national_id,
+        gender=new_ticket.passenger_gender,
+        phone_number=new_ticket.passenger_phone,
+        ticket_class_id=new_ticket.ticket_class_id,
+        booking_price=new_ticket.booking_price,
+        booking_date=now.date(),
+        ticket_status=False,
+        employee_id=new_ticket.employee_id
+    )
+
+    db.add(ticket)
+    await db.commit()
+    await db.refresh(ticket)
+    return ticket
+
+
 async def update(db: AsyncSession, update_ticket: BookingUpdate) -> Optional[BookingTicket]:
-    
-    ticket = await db.execute(select(BookingTicket)
-                              .where(BookingTicket.booking_ticket_id == update_ticket.booking_ticket_id,
-                                     )
-                              .options(
-                                  selectinload(BookingTicket.flight).selectinload(Flight.flight_route),
-                                  selectinload(BookingTicket.ticket_class).selectinload(TicketClass.ticket_prices),
-                                  selectinload(BookingTicket.employee),
-                              ))
-    
-    ticket = ticket.scalar_one_or_none()
-    
+    # Truy xuất vé theo ID
+    ticket_result = await db.execute(
+        select(BookingTicket)
+        .where(BookingTicket.booking_ticket_id == update_ticket.booking_ticket_id)
+        .options(
+            selectinload(BookingTicket.flight).selectinload(Flight.flight_route),
+            selectinload(BookingTicket.ticket_class).selectinload(TicketClass.ticket_prices),
+            selectinload(BookingTicket.employee),
+        )
+    )
+    ticket = ticket_result.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    # Lấy ngày giờ bay để kiểm tra hạn cập nhật
     departure_date = ticket.flight.flight_date
     departure_time = ticket.flight.departure_time
+
+    # Lấy quy định về thời gian cập nhật
     rules = await db.execute(select(Rules))
-    
     rules = rules.scalar()
-    
     latest_booking_delta = timedelta(hours=rules.latest_booking_time)
+
+    # Kiểm tra nếu đã quá hạn cập nhật thì không cho phép
     if departure_date and departure_time:
         flight_datetime = datetime.combine(departure_date, departure_time)
         update_deadline = flight_datetime - latest_booking_delta
-
         if datetime.now() >= update_deadline:
             raise HTTPException(status_code=400, detail="Cannot update ticket: flight has already departed")
-        
-    
+
+    # Truy xuất giá vé mới theo flight_id và ticket_class_id mới
     price_result = await db.execute(
-        select(TicketPrice.price).join(TicketPrice.flight_route).join(FlightRoute.flights).where(
+        select(TicketPrice.price)
+        .join(TicketPrice.flight_route)
+        .join(FlightRoute.flights)
+        .where(
             Flight.flight_id == update_ticket.flight_id,
             TicketPrice.ticket_class_id == update_ticket.ticket_class_id
         )
     )
-    
-
     ticket_price = price_result.scalar_one_or_none()
-    
     if ticket_price is None:
         raise HTTPException(status_code=400, detail="Ticket price not found for route and class")
-    
-    employee = await db.execute(select(Employee.employee_id).join(Employee.booking_tickets).where(BookingTicket.booking_ticket_id == update_ticket.booking_ticket_id))
 
-    employee_id = employee.scalar_one_or_none()
+    # Truy xuất nhân viên tạo vé
+    employee_result = await db.execute(
+        select(Employee.employee_id)
+        .join(Employee.booking_tickets)
+        .where(BookingTicket.booking_ticket_id == update_ticket.booking_ticket_id)
+    )
+    employee_id = employee_result.scalar_one_or_none()
     if employee_id is None:
-        raise HTTPException(status_code= 400, detail= "Employee id not found")
-    
-    update_ticket.employee_id = employee_id
-    update_ticket.booking_price = ticket_price
+        raise HTTPException(status_code=400, detail="Employee id not found")
 
-    if not ticket:
-        raise HTTPException(status_code= 404, detail= "Ticket not found ")
-    update_ticket.booking_price = ticket.booking_price
-    
+    # Cập nhật thống kê ghế nếu đổi hạng vé
+    if ticket.ticket_class_id != update_ticket.ticket_class_id:
+        # Thống kê hạng vé cũ
+        old_stat_result = await db.execute(
+            select(TicketClassStatistics)
+            .where(
+                TicketClassStatistics.flight_id == ticket.flight_id,
+                TicketClassStatistics.ticket_class_id == ticket.ticket_class_id
+            )
+        )
+        old_stat = old_stat_result.scalar_one_or_none()
+        if old_stat:
+            old_stat.available_seats += 1
+            old_stat.booked_seats -= 1
+
+        # Thống kê hạng vé mới
+        new_stat_result = await db.execute(
+            select(TicketClassStatistics)
+            .where(
+                TicketClassStatistics.flight_id == ticket.flight_id,
+                TicketClassStatistics.ticket_class_id == update_ticket.ticket_class_id
+            )
+        )
+        new_stat = new_stat_result.scalar_one_or_none()
+        if new_stat:
+            if new_stat.available_seats <= 0:
+                raise HTTPException(status_code=400, detail="No available seats in the new ticket class")
+            new_stat.available_seats -= 1
+            new_stat.booked_seats += 1
+
+    # Cập nhật thông tin vé
     ticket.flight_id = update_ticket.flight_id
     ticket.passenger_name = update_ticket.passenger_name
     ticket.national_id = update_ticket.national_id
     ticket.gender = update_ticket.passenger_gender
     ticket.phone_number = update_ticket.passenger_phone
     ticket.ticket_class_id = update_ticket.ticket_class_id
-    ticket.booking_price = update_ticket.booking_price
-    
-    ticket.employee_id = update_ticket.employee_id
+
+    # Ghi đè đúng giá vé mới
+    ticket.booking_price = ticket_price
+
+    ticket.employee_id = employee_id
+
     await db.commit()
     await db.refresh(ticket)
-
-
     return ticket
     
     

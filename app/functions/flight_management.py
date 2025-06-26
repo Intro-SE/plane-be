@@ -1,9 +1,10 @@
 from app.models.Flight import Flight
 from app.models.FlightRoute import FlightRoute
 from app.models.FlightDetail import FlightDetail
-from typing import Optional, List
+from typing import Optional, List, Dict, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy import delete
 from sqlalchemy.orm import selectinload
 from app.models.TicketClassStatistics import TicketClassStatistics
 from app.models.FlightRoute import FlightRoute
@@ -57,99 +58,101 @@ class FlightCreate(BaseModel):
                 raise ValueError("Sum of total_type_seats must equal total_seats")
         return values
 
+# Lấy tất cả các chuyến bay
+async def get_all_flights(db: AsyncSession, skip: int = 0, limit: int = 1000) -> Tuple[List[Flight], Dict[Tuple[str, str], int]]:
+    # Preload toàn bộ TicketPrice một lần duy nhất
+    price_result = await db.execute(select(TicketPrice))
+    all_prices = price_result.scalars().all()
+    price_map = {
+        (tp.flight_route_id, tp.ticket_class_id): tp.price
+        for tp in all_prices
+    }
 
-async def get_all_flights(db: AsyncSession, skip: int = 0, limit: int = 1000) -> List[Flight]:
-    result = await db.execute(select(Flight)
-                              .options(
-                                selectinload(Flight.flight_route)
-                                .selectinload(FlightRoute.departure_airport),
-                                selectinload(Flight.flight_route)
-                                .selectinload(FlightRoute.arrival_airport),
-                                selectinload(Flight.flight_route)
-                                .selectinload(FlightRoute.flight_details)
-                                .selectinload(FlightDetail.transit_airport),
-                                selectinload(Flight.ticket_class_statistics)
-                                .selectinload(TicketClassStatistics.ticket_class)
-                                .selectinload(TicketClass.ticket_prices),
-                              ).offset(skip).limit(limit))
-    
-    return result.scalars().all()
+    # Load Flight + các quan hệ cần thiết
+    result = await db.execute(
+        select(Flight)
+        .options(
+            selectinload(Flight.flight_route).selectinload(FlightRoute.departure_airport),
+            selectinload(Flight.flight_route).selectinload(FlightRoute.arrival_airport),
+            selectinload(Flight.flight_route).selectinload(FlightRoute.flight_details).selectinload(FlightDetail.transit_airport),
+            selectinload(Flight.ticket_class_statistics).selectinload(TicketClassStatistics.ticket_class)
+        )
+        .offset(skip).limit(limit)
+    )
 
+    flights = result.scalars().all()
+    return flights, price_map
 
-async def find_flights_by_filter(db: AsyncSession,filters: FlightSearch, skip: int = 0, limit: int = 1000) -> List[Flight]:
+# Tìm kiếm các chuyến bay theo bộ lọc
+async def find_flights_by_filter(db: AsyncSession, filters: FlightSearch, skip: int = 0, limit: int = 1000) -> Tuple[List[Flight], Dict[Tuple[str, str], int]]:
     conditions = []
-    
-    
+
     if filters.flight_id:
         conditions.append(Flight.flight_id == filters.flight_id)
-        
-        
-        
+
     if filters.departure_address:
         conditions.append(
             Flight.flight_route.has(
-                FlightRoute.departure_airport.has(
-                    airport_address = filters.departure_address
-                )
+                FlightRoute.departure_airport.has(airport_address=filters.departure_address)
             )
         )
-        
-        
+
     if filters.arrival_address:
         conditions.append(
             Flight.flight_route.has(
-                FlightRoute.arrival_airport.has(
-                    airport_address = filters.arrival_address
-                )
+                FlightRoute.arrival_airport.has(airport_address=filters.arrival_address)
             )
         )
-        
+
     if filters.departure_date:
-        conditions.append(
-            Flight.flight_date == filters.departure_date
-        )
-        
+        conditions.append(Flight.flight_date == filters.departure_date)
+
     if filters.min_time:
         conditions.append(Flight.departure_time >= filters.min_time)
-        
+
     if filters.max_time:
         conditions.append(Flight.departure_time <= filters.max_time)
-        
+
     if filters.least_empty_seats:
         conditions.append(
             Flight.ticket_class_statistics.any(
                 TicketClassStatistics.available_seats >= filters.least_empty_seats
             )
         )
-    
+
     if filters.total_seats:
         conditions.append(Flight.flight_seat_count >= filters.total_seats)
-        
-        
+
     if filters.is_empty:
         conditions.append(Flight.ticket_class_statistics.any(TicketClassStatistics.available_seats > 0))
-        
-        
-        
+
     query = (
         select(Flight)
-        .join(Flight.flight_route)
-        .join(FlightRoute.departure_airport)
         .options(
             selectinload(Flight.flight_route).selectinload(FlightRoute.departure_airport),
             selectinload(Flight.flight_route).selectinload(FlightRoute.arrival_airport),
             selectinload(Flight.flight_route).selectinload(FlightRoute.flight_details).selectinload(FlightDetail.transit_airport),
-            selectinload(Flight.ticket_class_statistics).selectinload(TicketClassStatistics.ticket_class).selectinload(TicketClass.ticket_prices),        )
+            selectinload(Flight.ticket_class_statistics).selectinload(TicketClassStatistics.ticket_class)
+        )
     )
-    
-    
+
     if conditions:
         query = query.where(and_(*conditions))
-        
-        
-    query = query.offset(skip).limit(limit)    
+
+    query = query.offset(skip).limit(limit)
     result = await db.execute(query)
-    return result.scalars().all()
+    flights = result.scalars().all()
+
+    # Truy vấn ticket prices cho dict
+    price_result = await db.execute(select(TicketPrice))
+    all_prices = price_result.scalars().all()
+    price_map = {
+        (tp.flight_route_id, tp.ticket_class_id): tp.price
+        for tp in all_prices
+    }
+
+    return flights, price_map
+
 
 
 
@@ -254,8 +257,16 @@ async def create_new_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
         )
         db.add(stats)
 
-    # 13. Commit và trả kết quả
+    # 13. Tạo dict ánh xạ (ticket_class_name, flight_route_id) → price
+    price_map = {
+        (tp.flight_route_id, tp.ticket_class_id): tp.price
+        for tp in ticket_prices
+    }
+
+    # 14. Commit
     await db.commit()
+
+    # 15. Load lại flight đã tạo
     result = await db.execute(
         select(Flight)
         .where(Flight.flight_id == flight.flight_id)
@@ -267,7 +278,7 @@ async def create_new_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
         )
     )
     refreshed_flight = result.unique().scalar_one()
-    return refreshed_flight
+    return refreshed_flight, price_map
 
 
 
@@ -351,6 +362,14 @@ async def update_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
     )
     existing_stats = {stat.ticket_class.ticket_class_name: stat for stat in result.scalars().all()}
 
+    # Xóa các thống kê hạng vé không còn tồn tại trong seat_type mới
+    for class_name in list(existing_stats.keys()):
+        if class_name not in flight.seat_type:
+            stat_to_delete = existing_stats[class_name]
+            await db.delete(stat_to_delete)
+            del existing_stats[class_name]
+
+
     # Cập nhật hoặc thêm thống kê hạng vé
     for type_name, new_total_seats in zip(flight.seat_type, flight.total_type_seats):
         result = await db.execute(select(TicketClass).where(TicketClass.ticket_class_name == type_name))
@@ -379,9 +398,16 @@ async def update_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
             )
             db.add(new_stat)
 
+    # Tạo price_map
+    price_map = {
+        (tp.flight_route_id, tp.ticket_class_id): tp.price
+        for tp in ticket_prices
+    }
+
+    # Commit
     await db.commit()
 
-    # Trả lại dữ liệu chuyến bay sau khi cập nhật
+    # Truy xuất lại flight
     result = await db.execute(
         select(Flight)
         .where(Flight.flight_id == flight.flight_id)
@@ -392,9 +418,8 @@ async def update_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
             selectinload(Flight.ticket_class_statistics).selectinload(TicketClassStatistics.ticket_class).selectinload(TicketClass.ticket_prices)
         )
     )
-
     refreshed_flight = result.unique().scalars().first()
-    return refreshed_flight
+    return refreshed_flight, price_map
 
     
     

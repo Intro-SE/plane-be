@@ -554,7 +554,7 @@ async def update_ticket_class_by_route(input: TicketClassRoute, db: AsyncSession
         if not rules:
             raise HTTPException(status_code=500, detail="Rules not found")
 
-        if current_count >= rules.ticket_class_count:
+        if current_count > rules.ticket_class_count:
             raise HTTPException(
                 status_code=400,
                 detail=f"Cannot assign ticket to route '{input.flight_route_id}' because it already has {current_count} ticket classes (max: {rules.ticket_class_count})"
