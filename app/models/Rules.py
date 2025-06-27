@@ -10,8 +10,8 @@ class Rules(Base):
     min_flight_time = Column(Integer, default=30)
     min_stop_time = Column(Integer, default=10)
     max_stop_time = Column(Integer, default=20)
-    latest_booking_time = Column(Integer, default=1)
-    latest_cancel_time = Column(Integer, default=1)
+    latest_booking_time = Column(Integer, default=24)
+    latest_cancel_time = Column(Integer, default=24)
     ticket_class_count = Column(Integer, default=2)
     
     
