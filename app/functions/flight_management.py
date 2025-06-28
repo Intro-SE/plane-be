@@ -219,6 +219,19 @@ async def create_new_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
                 detail=f"Ticket class '{seat_class}' is not available for the route"
             )
 
+    # 8.5. Phải có ít nhất một hạng vé và độ dài danh sách khớp nhau
+    if not flight.seat_type or not flight.total_type_seats:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one ticket class must be specified for the flight"
+        )
+    if len(flight.seat_type) != len(flight.total_type_seats):
+        raise HTTPException(
+            status_code=400,
+            detail="Mismatch between number of ticket classes and seat counts"
+        )
+
+
     # 9. Lấy tên sân bay đi và đến để hiển thị (không lưu)
     flight.departure_airport = route.departure_airport.airport_name
     flight.arrival_airport = route.arrival_airport.airport_name
@@ -227,6 +240,13 @@ async def create_new_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
     check = await db.execute(select(Flight).where(Flight.flight_id == flight.flight_id))
     if check.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Flight already exists")
+    
+    # 10.5 Check total_seats phải lớn hơn 0
+    if flight.total_seats is None or flight.total_seats <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Flight must have at least 1 seat"
+        )
 
     # 11. Tạo chuyến bay mới
     new_flight = Flight(
@@ -342,6 +362,22 @@ async def update_flight(db: AsyncSession, flight: FlightCreate) -> Flight:
                 status_code=400,
                 detail=f"Ticket class '{seat_class}' is not assigned to this route"
             )
+        
+    # Kiểm tra phải có ít nhất một hạng vé
+    if not flight.seat_type or not flight.total_type_seats:
+        raise HTTPException(status_code=400, detail="Flight must have at least one ticket class")
+    if len(flight.seat_type) != len(flight.total_type_seats):
+        raise HTTPException(status_code=400, detail="Mismatch between ticket classes and seat counts")
+
+    # Tính tổng số ghế đã đặt (booked_seats) hiện tại
+    total_booked = sum(stat.booked_seats for stat in exist_flight.ticket_class_statistics)
+
+    # Kiểm tra tổng ghế sau khi cập nhật không được < số ghế đã đặt
+    if flight.total_seats is None or flight.total_seats < total_booked:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot set total seats to {flight.total_seats} (already booked: {total_booked})"
+        )
 
     # Cập nhật thông tin chuyến bay
     exist_flight.flight_route_id = flight.flight_route

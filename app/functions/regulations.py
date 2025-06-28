@@ -13,6 +13,7 @@ from sqlalchemy import func, select, join,and_, or_
 from sqlalchemy.orm import selectinload
 from app.models.TicketPrice import TicketPrice
 from app.models.Airport import Airport
+from app.models.FlightRoute import FlightRoute
 from sqlalchemy.orm import selectinload
 
 # Các chỉ số thay đổi quy định
@@ -175,12 +176,54 @@ async def create_transit(input: FlightTransitCreate, db: AsyncSession) -> Flight
     transit_airport = await get_airport_name(db, input.transit_airport_name)
     if not transit_airport:
         raise HTTPException(status_code=404, detail=f"Airport '{input.transit_airport_name}' not exists")
+    
+    # Lấy thông tin tuyến bay để kiểm tra sân bay đi và đến
+    route_result = await db.execute(
+        select(FlightRoute)
+        .options(
+            selectinload(FlightRoute.departure_airport),
+            selectinload(FlightRoute.arrival_airport)
+        )
+        .where(FlightRoute.flight_route_id == input.flight_route_id)
+    )
+    flight_route = route_result.scalar_one_or_none()
+    print(flight_route)
+
+    if not flight_route:
+        raise HTTPException(status_code=404, detail="Flight route not found")
+
+    departure_name = flight_route.departure_airport.airport_name
+    arrival_name = flight_route.arrival_airport.airport_name
+
+    # Kiểm tra tên sân bay trung gian phải khác sân bay đi và đến
+    if input.transit_airport_name in [departure_name, arrival_name]:
+        raise HTTPException(
+            status_code=400,
+            detail="Transit airport must be different from departure and arrival airports"
+        )
+    
+    # Kiểm tra sân bay trung gian được tạo không trùng tuyến bay và sân bay
+    existing_transit_result = await db.execute(
+        select(FlightDetail)
+        .join(Airport, FlightDetail.transit_airport_id == Airport.airport_id)
+        .where(
+            FlightDetail.flight_route_id == input.flight_route_id,
+            Airport.airport_name == input.transit_airport_name
+        )
+    )
+    existing_transit = existing_transit_result.scalar_one_or_none()
+
+    if existing_transit:
+        raise HTTPException(
+            status_code=400,
+            detail="This transit airport already exists in the selected flight route"
+        )
 
     # Kiểm tra quy định về số lượng sân bay trung gian và thời gian dừng
     if count_ >= rules.max_transit_airports:
-        raise HTTPException(status_code=400, detail="Số lượng sân bay trung gian vượt quá giới hạn quy định")
+        raise HTTPException(status_code=400, detail="Number of transit airports exceeds the allowed limit")
     if not (rules.min_stop_time <= input.stop_time <= rules.max_stop_time):
-        raise HTTPException(status_code=400, detail="Thời gian dừng không hợp lệ")
+        raise HTTPException(status_code=400, detail="Stop time must be between {rules.min_stop_time} and {rules.max_stop_time} minutes")
 
     # Tạo bản ghi mới cho sân bay trung gian
     new_transit = FlightDetail(
@@ -273,6 +316,47 @@ async def update_transit(input: FlightTransitOut, db: AsyncSession) -> FlightTra
         new_airport = await get_airport_name(db, input.transit_airport_name)
         if not new_airport:
             raise HTTPException(status_code=404, detail="New transit airport not found")
+
+        # Lấy tuyến bay tương ứng để kiểm tra sân bay đi và đến
+        route_result = await db.execute(
+            select(FlightRoute)
+            .options(
+                selectinload(FlightRoute.departure_airport),
+                selectinload(FlightRoute.arrival_airport)
+            )
+            .where(FlightRoute.flight_route_id == transit_detail.flight_route_id)
+        )
+        route = route_result.scalar_one_or_none()
+        if not route:
+            raise HTTPException(status_code=404, detail="Flight route not found")
+
+        departure_name = route.departure_airport.airport_name
+        arrival_name = route.arrival_airport.airport_name
+
+        if input.transit_airport_name in [departure_name, arrival_name]:
+            raise HTTPException(
+                status_code=400,
+                detail="Transit airport must be different from departure and arrival airports"
+            )
+
+        # Kiểm tra trùng với các sân bay trung gian khác (cùng flight_route_id, khác flight_detail_id)
+        duplicate_result = await db.execute(
+            select(FlightDetail)
+            .join(Airport, FlightDetail.transit_airport_id == Airport.airport_id)
+            .where(
+                FlightDetail.flight_route_id == transit_detail.flight_route_id,
+                Airport.airport_name == input.transit_airport_name,
+                FlightDetail.flight_detail_id != transit_detail.flight_detail_id
+            )
+        )
+        duplicate_transit = duplicate_result.scalar_one_or_none()
+        if duplicate_transit:
+            raise HTTPException(
+                status_code=400,
+                detail="This transit airport already exists in the selected flight route"
+            )
+
+        # Cập nhật airport_id mới
         transit_detail.transit_airport_id = new_airport.airport_id
 
     # Commit các thay đổi
@@ -483,6 +567,10 @@ async def create_ticket_class_by_route(input: TicketClassRouteCreate, db: AsyncS
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Ticket price already exists for this route and class")
+    
+    # 4.5. Kiểm tra giá tiền phải > 0
+    if input.price <= 0:
+        raise HTTPException(status_code=400, detail="Ticket price must be greater than 0")
 
     # 5. Sinh ticket_price_id mới
     new_id = await generate_ticket_price_id(db)
@@ -582,6 +670,11 @@ async def update_ticket_class_by_route(input: TicketClassRoute, db: AsyncSession
 
     # 5. Cập nhật giá
     if input.price is not None:
+        if input.price <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Ticket price must be greater than 0"
+            )
         ticket_price.price = input.price
 
     # 6. Commit và refresh
